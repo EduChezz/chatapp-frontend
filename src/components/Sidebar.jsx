@@ -12,22 +12,21 @@ export default function Sidebar({ activeChat, setActiveChat, contacts, setContac
   const [searchResults, setSearchResults] = useState([])
   const [showProfile, setShowProfile] = useState(false)
 
-  // 1. Cargar las conversaciones reales desde PostgreSQL
+  // 1. Cargar las conversaciones
   const loadConversations = async () => {
     try {
       const res = await api.get('/conversations')
-      setContacts(res.data) // Le pasa los chats reales al ChatPanel
+      setContacts(res.data)
     } catch (err) {
       console.error("Error cargando chats", err)
     }
   }
 
-  // Cargar al inicio
   useEffect(() => {
     loadConversations()
   }, [])
 
-  // 2. Buscar usuarios nuevos cuando escribes en la barra
+  // 2. Buscar usuarios nuevos
   useEffect(() => {
     if (!search.trim()) {
       setSearchResults([])
@@ -44,7 +43,7 @@ export default function Sidebar({ activeChat, setActiveChat, contacts, setContac
     return () => clearTimeout(timer)
   }, [search])
 
-  // 3. Crear un chat nuevo al hacer clic en un resultado
+  // 3. Crear chat nuevo
   const startChat = async (otherUserId, otherUserName) => {
     try {
       const res = await api.post('/conversations', {
@@ -52,8 +51,8 @@ export default function Sidebar({ activeChat, setActiveChat, contacts, setContac
         is_group: false,
         member_ids: [otherUserId]
       })
-      await loadConversations() // Recarga la lista
-      setActiveChat(res.data.id) // Abre el chat inmediatamente
+      await loadConversations()
+      setActiveChat(res.data.id)
       setSearch('')
       setSearchResults([])
     } catch (err) {
@@ -61,108 +60,107 @@ export default function Sidebar({ activeChat, setActiveChat, contacts, setContac
     }
   }
 
-  // Estilos de la barra lateral
-  const bgSidebar = dark ? '#0f172a' : '#1e293b'
-  const bgItem = dark ? '#1e293b' : '#334155'
-  const textMuted = '#94a3b8'
-
   return (
-    <div style={{ width: '320px', background: bgSidebar, display: 'flex', flexDirection: 'column', height: '100vh', borderRight: `1px solid ${dark ? '#1e293b' : '#0f172a'}` }}>
+    // Contenedor principal con Tailwind (Ancho fijo en PC, adaptable, modo oscuro activo)
+    <div className="w-80 flex flex-col h-screen border-r transition-colors duration-300 bg-slate-800 dark:bg-slate-900 border-slate-700 dark:border-slate-800">
       
-      {/* Cabecera del usuario (Tu perfil) */}
-      <div style={{ padding: '20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      {/* Cabecera del usuario */}
+      <div className="p-5 flex items-center justify-between">
         <div 
           onClick={() => setShowProfile(true)}
-          style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}
+          className="flex items-center gap-2.5 cursor-pointer hover:opacity-80 transition-opacity"
           title="Editar perfil"
         >
-          <div style={{ 
-            width: '40px', height: '40px', borderRadius: '50%', 
-            background: user?.avatar_color || '#3b82f6', 
-            display: 'flex', alignItems: 'center', justifyContent: 'center', 
-            color: 'white', fontWeight: 'bold' 
-          }}>
+          {/* Avatar (El color de fondo sí se queda como style porque viene de la BD) */}
+          <div 
+            className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold"
+            style={{ backgroundColor: user?.avatar_color || '#3b82f6' }}
+          >
             {user?.name?.substring(0, 2).toUpperCase() || 'U'}
           </div>
           <div>
-            <h3 style={{ color: 'white', margin: 0, fontSize: '15px' }}>{user?.name}</h3>
-            <p style={{ color: '#22c55e', margin: 0, fontSize: '12px' }}>● {user?.status || 'en línea'}</p>
+            <h3 className="text-white m-0 text-sm font-semibold">{user?.name}</h3>
+            <p className="text-green-500 m-0 text-xs font-medium">● {user?.status || 'en línea'}</p>
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: '10px' }}>
-          <button onClick={toggleTheme} style={{ background: bgItem, border: 'none', color: 'white', padding: '8px', borderRadius: '8px', cursor: 'pointer' }}>
+        <div className="flex gap-2.5">
+          <button 
+            onClick={toggleTheme} 
+            className="p-2 rounded-lg text-white border-none cursor-pointer transition-colors bg-slate-700 dark:bg-slate-800 hover:bg-slate-600 dark:hover:bg-slate-700"
+          >
             {dark ? '☀️' : '🌙'}
           </button>
-          <button onClick={logout} style={{ background: '#ef4444', border: 'none', color: 'white', padding: '8px 12px', borderRadius: '8px', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold' }}>
+          <button 
+            onClick={logout} 
+            className="px-3 py-2 rounded-lg cursor-pointer text-xs font-bold transition-colors border-none text-white bg-red-500 hover:bg-red-600"
+          >
             Salir
           </button>
         </div>
       </div>
 
       {/* Buscador */}
-      <div style={{ padding: '0 20px 20px' }}>
+      <div className="px-5 pb-5">
         <input 
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Buscar usuarios por nombre..." 
-          style={{ 
-            width: '100%', padding: '10px 14px', borderRadius: '8px', 
-            border: 'none', background: bgItem, color: 'white', outline: 'none',
-            boxSizing: 'border-box'
-          }} 
+          className="w-full px-3.5 py-2.5 rounded-lg border-none text-white outline-none focus:ring-2 focus:ring-blue-500 transition-colors bg-slate-700 dark:bg-slate-800 placeholder-slate-400"
         />
       </div>
 
-      {/* Lista de Resultados de Búsqueda o Chats Guardados */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '0 10px' }}>
+      {/* Lista de Resultados / Chats */}
+      <div className="flex-1 overflow-y-auto px-2.5 custom-scrollbar">
         
         {searchResults.length > 0 ? (
           <div>
-            <p style={{ color: textMuted, fontSize: '12px', padding: '0 10px', margin: '0 0 10px', fontWeight: 'bold' }}>RESULTADOS DE BÚSQUEDA</p>
+            <p className="text-slate-400 text-xs px-2.5 mb-2.5 font-bold">RESULTADOS DE BÚSQUEDA</p>
             {searchResults.map(u => (
               <div 
                 key={u.id} 
                 onClick={() => startChat(u.id, u.name)}
-                style={{ 
-                  display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', 
-                  borderRadius: '12px', cursor: 'pointer', marginBottom: '4px', background: 'transparent'
-                }}
-                onMouseEnter={e => e.currentTarget.style.background = bgItem}
-                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                className="flex items-center gap-3 p-3 rounded-xl cursor-pointer mb-1 transition-colors bg-transparent hover:bg-slate-700 dark:hover:bg-slate-800"
               >
-                <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: u.avatar_color || '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 'bold' }}>
+                <div 
+                  className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold"
+                  style={{ backgroundColor: u.avatar_color || '#64748b' }}
+                >
                   {u.name.substring(0, 2).toUpperCase()}
                 </div>
                 <div>
-                  <h4 style={{ margin: 0, color: 'white', fontSize: '14px' }}>{u.name}</h4>
-                  <p style={{ margin: 0, color: textMuted, fontSize: '12px' }}>Toca para chatear</p>
+                  <h4 className="m-0 text-white text-sm font-semibold">{u.name}</h4>
+                  <p className="m-0 text-slate-400 text-xs">Toca para chatear</p>
                 </div>
               </div>
             ))}
           </div>
         ) : (
           <div>
-            <p style={{ color: textMuted, fontSize: '12px', padding: '0 10px', margin: '0 0 10px', fontWeight: 'bold' }}>TUS CHATS</p>
+            <p className="text-slate-400 text-xs px-2.5 mb-2.5 font-bold">TUS CHATS</p>
             {contacts?.map(chat => (
               <div 
                 key={chat.id} 
                 onClick={() => setActiveChat(chat.id)}
-                style={{ 
-                  display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', 
-                  borderRadius: '12px', cursor: 'pointer', marginBottom: '4px',
-                  background: activeChat === chat.id ? '#3b82f6' : 'transparent',
-                  transition: 'background 0.2s'
-                }}
-                onMouseEnter={e => { if(activeChat !== chat.id) e.currentTarget.style.background = bgItem }}
-                onMouseLeave={e => { if(activeChat !== chat.id) e.currentTarget.style.background = 'transparent' }}
+                className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer mb-1 transition-colors duration-200 ${
+                  activeChat === chat.id 
+                    ? 'bg-blue-500' 
+                    : 'hover:bg-slate-700 dark:hover:bg-slate-800'
+                }`}
               >
-                <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: chat.color || '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 'bold' }}>
+                <div 
+                  className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold"
+                  style={{ backgroundColor: chat.color || '#3b82f6' }}
+                >
                   {chat.name?.substring(0, 2).toUpperCase()}
                 </div>
-                <div style={{ flex: 1, overflow: 'hidden' }}>
-                  <h4 style={{ margin: 0, color: 'white', fontSize: '14px', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>{chat.name}</h4>
-                  <p style={{ margin: 0, color: activeChat === chat.id ? '#bfdbfe' : textMuted, fontSize: '12px', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
+                <div className="flex-1 overflow-hidden">
+                  <h4 className="m-0 text-white text-sm font-semibold whitespace-nowrap overflow-hidden text-ellipsis">
+                    {chat.name}
+                  </h4>
+                  <p className={`m-0 text-xs whitespace-nowrap overflow-hidden text-ellipsis ${
+                    activeChat === chat.id ? 'text-blue-200' : 'text-slate-400'
+                  }`}>
                     {chat.last_message || 'Inicia la conversación'}
                   </p>
                 </div>
@@ -170,9 +168,9 @@ export default function Sidebar({ activeChat, setActiveChat, contacts, setContac
             ))}
             
             {(!contacts || contacts.length === 0) && search.length === 0 && (
-               <div style={{ padding: '20px', textAlign: 'center', color: textMuted, fontSize: '13px' }}>
+               <div className="p-5 text-center text-slate-400 text-sm">
                  <p>Aún no tienes chats.</p>
-                 <p>Usa la barra de arriba para buscar a otros usuarios registrados.</p>
+                 <p className="mt-2 text-xs">Usa la barra de arriba para buscar a otros usuarios registrados.</p>
                </div>
             )}
           </div>
