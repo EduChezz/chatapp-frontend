@@ -2,8 +2,6 @@ import { useState, useRef, useEffect } from 'react'
 import ImageViewer from './ImageViewer'
 import { useTheme } from '../context/ThemeContext'
 import { playNotificationSound, requestNotificationPermission, showDesktopNotification } from '../utils/notify'
-
-// 1. NUEVOS IMPORTS PARA EL BACKEND
 import api from '../services/api'
 import socket from '../services/socket'
 import { useAuth } from '../context/AuthContext'
@@ -13,8 +11,6 @@ const REACTIONS = ['❤️','😂','👍','😮','😢','🔥']
 
 export default function ChatPanel({ activeChat, contacts }) {
   const { dark } = useTheme()
-  
-  // 2. NUEVOS ESTADOS DEL PASO 7
   const { user } = useAuth()
   const [allMessages, setAllMessages] = useState({})
   const [input, setInput] = useState('')
@@ -29,17 +25,9 @@ export default function ChatPanel({ activeChat, contacts }) {
   const contact = contacts.find(c => c.id === activeChat)
   const messages = allMessages[activeChat] || []
 
-  // Permiso de notificaciones
-  useEffect(() => {
-    requestNotificationPermission()
-  }, [])
+  useEffect(() => { requestNotificationPermission() }, [])
+  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages, activeChat])
 
-  // Auto-scroll
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages, activeChat])
-
-  // 3. CARGAR MENSAJES DE LA BASE DE DATOS (PASO 7)
   useEffect(() => {
     if (!activeChat) return
     api.get(`/messages/${activeChat}`).then(res => {
@@ -48,7 +36,6 @@ export default function ChatPanel({ activeChat, contacts }) {
     }).catch(err => console.error("Error al cargar mensajes:", err))
   }, [activeChat])
 
-  // 4. ESCUCHAR MENSAJES EN TIEMPO REAL (PASO 7)
   useEffect(() => {
     socket.on('message:new', (msg) => {
       const isMine = msg.sender_id === user?.id
@@ -75,23 +62,17 @@ export default function ChatPanel({ activeChat, contacts }) {
     }
   }, [activeChat, contact, user])
 
-  // 5. NUEVA FUNCIÓN PARA ENVIAR (PASO 7)
   const sendMessage = (text, type = 'text', extra = {}) => {
     if (type === 'text' && !text.trim()) return
     socket.emit('message:send', {
-      conversationId: activeChat,
-      senderId: user?.id,
-      content: text,
-      type,
-      fileName: extra.fileName || null,
-      fileSize: extra.fileSize || null,
+      conversationId: activeChat, senderId: user?.id, content: text,
+      type, fileName: extra.fileName || null, fileSize: extra.fileSize || null,
     })
     setInput('')
     setShowEmojis(false)
     socket.emit('typing:stop', { conversationId: activeChat })
   }
 
-  // 6. NUEVA FUNCIÓN PARA SUBIR ARCHIVOS (PASO 7)
   const handleFileChange = async (e) => {
     const file = e.target.files[0]
     if (!file) return
@@ -107,7 +88,6 @@ export default function ChatPanel({ activeChat, contacts }) {
     e.target.value = ''
   }
 
-  // Reacciones visuales ajustadas a la nueva estructura
   const addReaction = (msgId, emoji) => {
     setAllMessages(prev => {
       const chatMsgs = prev[activeChat] || []
@@ -127,115 +107,59 @@ export default function ChatPanel({ activeChat, contacts }) {
     setShowReactions(null)
   }
 
-  // Colores según modo
-  const headerBg = dark ? '#1e293b' : 'white'
-  const headerBorder = dark ? '#334155' : '#e2e8f0'
-  const msgAreaBg = dark ? '#0f172a' : '#f8fafc'
-  const inputBarBg = dark ? '#1e293b' : 'white'
-  const inputBg = dark ? '#0f172a' : '#f8fafc'
-  const inputBorder = dark ? '#334155' : '#e2e8f0'
-  const bubbleInBg = dark ? '#1e293b' : 'white'
-  const bubbleInColor = dark ? '#f1f5f9' : '#1e293b'
-  const bubbleInBorder = dark ? '#334155' : '#e2e8f0'
-  const timeColor = dark ? '#64748b' : '#94a3b8'
-  const reactionBg = dark ? '#1e293b' : 'white'
-  const reactionBorder = dark ? '#334155' : '#e2e8f0'
-
-  if (!activeChat) return (
-    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', background: msgAreaBg, color: timeColor }}>
-      <h2>Selecciona un chat para empezar</h2>
-    </div>
-  )
+  if (!activeChat) return null
 
   return (
     <>
       <ImageViewer src={lightboxSrc} onClose={() => setLightboxSrc(null)} />
 
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100vh' }}>
-
+      <div className="flex-1 flex flex-col h-screen bg-slate-50 dark:bg-slate-900 transition-colors duration-300">
+        
         {/* Header */}
-        <div style={{
-          padding: '12px 20px',
-          background: headerBg,
-          borderBottom: `1px solid ${headerBorder}`,
-          display: 'flex', alignItems: 'center', gap: '12px',
-          transition: 'background 0.3s'
-        }}>
-          <div style={{
-            width: '40px', height: '40px', borderRadius: '50%',
-            background: contact?.color || '#3b82f6',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: 'white', fontSize: '13px', fontWeight: '500'
-          }}>
+        <div className="px-5 py-3 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex items-center gap-3 transition-colors duration-300">
+          <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-[13px] font-medium"
+               style={{ backgroundColor: contact?.color || '#3b82f6' }}>
             {contact?.name?.substring(0, 2).toUpperCase() || '?'}
           </div>
           <div>
-            <p style={{ margin: 0, fontWeight: '500', fontSize: '14px', color: dark ? '#f1f5f9' : '#1e293b' }}>
+            <p className="m-0 font-medium text-sm text-slate-800 dark:text-slate-100 transition-colors">
               {contact?.name || 'Chat'}
-              {contact?.is_group && (
-                <span style={{ marginLeft: '6px', fontSize: '12px', color: '#7c3aed' }}>👥 Grupo</span>
-              )}
+              {contact?.is_group && <span className="ml-1.5 text-xs text-purple-600 dark:text-purple-400">👥 Grupo</span>}
             </p>
-            <p style={{ margin: 0, fontSize: '12px', color: isTyping ? '#3b82f6' : '#94a3b8' }}>
+            <p className={`m-0 text-xs transition-colors ${isTyping ? 'text-blue-500' : 'text-slate-500 dark:text-slate-400'}`}>
               {isTyping ? '✏️ escribiendo...' : (contact?.status || 'en línea')}
             </p>
           </div>
         </div>
 
         {/* Área de mensajes */}
-        <div
-          onClick={() => { setShowEmojis(false); setShowReactions(null) }}
-          style={{
-            flex: 1, overflowY: 'auto', padding: '20px 16px',
-            display: 'flex', flexDirection: 'column', gap: '8px',
-            background: msgAreaBg, transition: 'background 0.3s'
-          }}
-        >
+        <div onClick={() => { setShowEmojis(false); setShowReactions(null) }}
+             className="flex-1 overflow-y-auto p-4 flex flex-col gap-2 bg-slate-50 dark:bg-slate-900 transition-colors duration-300 custom-scrollbar">
           {messages.map((msg) => (
-            <div
-              key={msg.id}
-              style={{
-                display: 'flex', justifyContent: msg.sent ? 'flex-end' : 'flex-start',
-                animation: 'msgIn 0.2s cubic-bezier(0.19,1,0.22,1)'
-              }}
-              onMouseEnter={() => setHoveredMsg(msg.id)}
-              onMouseLeave={() => { setHoveredMsg(null); setShowReactions(null) }}
-            >
-              <div style={{ position: 'relative', maxWidth: '65%' }}>
-
-                {/* Botón reacción (hover) */}
+            <div key={msg.id}
+                 className={`flex ${msg.sent ? 'justify-end' : 'justify-start'}`}
+                 style={{ animation: 'msgIn 0.2s cubic-bezier(0.19,1,0.22,1)' }}
+                 onMouseEnter={() => setHoveredMsg(msg.id)}
+                 onMouseLeave={() => { setHoveredMsg(null); setShowReactions(null) }}>
+              
+              <div className="relative max-w-[65%]">
+                
+                {/* Botón reacción */}
                 {hoveredMsg === msg.id && (
-                  <button
-                    onClick={e => { e.stopPropagation(); setShowReactions(showReactions === msg.id ? null : msg.id) }}
-                    style={{
-                      position: 'absolute', top: '-10px',
-                      [msg.sent ? 'left' : 'right']: '-10px',
-                      background: reactionBg, border: `1px solid ${reactionBorder}`,
-                      borderRadius: '50%', width: '26px', height: '26px',
-                      cursor: 'pointer', fontSize: '13px', zIndex: 10,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      boxShadow: '0 2px 6px rgba(0,0,0,0.1)'
-                    }}
-                  >😊</button>
+                  <button onClick={e => { e.stopPropagation(); setShowReactions(showReactions === msg.id ? null : msg.id) }}
+                          className={`absolute -top-2.5 ${msg.sent ? '-left-2.5' : '-right-2.5'} bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full w-[26px] h-[26px] cursor-pointer text-[13px] z-10 flex items-center justify-center shadow-md hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors`}>
+                    😊
+                  </button>
                 )}
 
                 {/* Picker de reacciones */}
                 {showReactions === msg.id && (
-                  <div
-                    onClick={e => e.stopPropagation()}
-                    style={{
-                      position: 'absolute', top: '-46px',
-                      [msg.sent ? 'left' : 'right']: '0',
-                      background: reactionBg, borderRadius: '24px',
-                      padding: '6px 10px', display: 'flex', gap: '6px',
-                      boxShadow: '0 4px 16px rgba(0,0,0,0.2)',
-                      border: `1px solid ${reactionBorder}`, zIndex: 20,
-                      animation: 'slideUp 0.2s cubic-bezier(0.19,1,0.22,1)'
-                    }}
-                  >
+                  <div onClick={e => e.stopPropagation()}
+                       className={`absolute -top-[46px] ${msg.sent ? 'left-0' : 'right-0'} bg-white dark:bg-slate-800 rounded-full px-2.5 py-1.5 flex gap-1.5 shadow-lg border border-slate-200 dark:border-slate-700 z-20`}
+                       style={{ animation: 'slideUp 0.2s cubic-bezier(0.19,1,0.22,1)' }}>
                     {REACTIONS.map(emoji => (
                       <button key={emoji} onClick={() => addReaction(msg.id, emoji)}
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px', padding: '2px' }}>
+                              className="bg-transparent border-none cursor-pointer text-lg p-0.5 hover:scale-110 transition-transform">
                         {emoji}
                       </button>
                     ))}
@@ -244,87 +168,39 @@ export default function ChatPanel({ activeChat, contacts }) {
 
                 {/* Burbuja — imagen */}
                 {msg.type === 'image' ? (
-                  <div
-                    onClick={() => setLightboxSrc(msg.content)}
-                    style={{
-                      borderRadius: msg.sent ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
-                      overflow: 'hidden', cursor: 'zoom-in',
-                      border: `1px solid ${reactionBorder}`,
-                      boxShadow: '0 1px 4px rgba(0,0,0,0.08)'
-                    }}
-                  >
-                    <img src={msg.content} alt="img"
-                      style={{ display: 'block', maxWidth: '220px', maxHeight: '200px', objectFit: 'cover' }} />
+                  <div onClick={() => setLightboxSrc(msg.content)}
+                       className={`overflow-hidden cursor-zoom-in border border-slate-200 dark:border-slate-700 shadow-sm ${msg.sent ? 'rounded-[18px_18px_4px_18px]' : 'rounded-[18px_18px_18px_4px]'}`}>
+                    <img src={msg.content} alt="img" className="block max-w-[220px] max-h-[200px] object-cover" />
                   </div>
-
                 ) : msg.type === 'file' ? (
                   /* Burbuja — archivo */
-                  <a href={msg.content} target="_blank" rel="noreferrer" style={{ textDecoration: 'none' }}>
-                    <div style={{
-                      padding: '10px 14px',
-                      background: msg.sent ? '#3b82f6' : bubbleInBg,
-                      borderRadius: msg.sent ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
-                      border: msg.sent ? 'none' : `1px solid ${bubbleInBorder}`,
-                      display: 'flex', alignItems: 'center', gap: '10px',
-                      boxShadow: '0 1px 2px rgba(0,0,0,0.04)', cursor: 'pointer'
-                    }}>
-                      <span style={{ fontSize: '24px' }}>📎</span>
+                  <a href={msg.content} target="_blank" rel="noreferrer" className="no-underline">
+                    <div className={`px-3.5 py-2.5 flex items-center gap-2.5 shadow-sm cursor-pointer transition-colors ${msg.sent ? 'bg-blue-500 border-none rounded-[18px_18px_4px_18px]' : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[18px_18px_18px_4px]'}`}>
+                      <span className="text-2xl">📎</span>
                       <div>
-                        <p style={{ margin: 0, fontSize: '13px', fontWeight: '500', color: msg.sent ? 'white' : bubbleInColor }}>
-                          {msg.file_name}
-                        </p>
-                        <p style={{ margin: 0, fontSize: '11px', color: msg.sent ? '#bfdbfe' : timeColor }}>
-                          {msg.file_size} · Descargar
-                        </p>
+                        <p className={`m-0 text-[13px] font-medium ${msg.sent ? 'text-white' : 'text-slate-800 dark:text-slate-100'}`}>{msg.file_name}</p>
+                        <p className={`m-0 text-[11px] ${msg.sent ? 'text-blue-200' : 'text-slate-500 dark:text-slate-400'}`}>{msg.file_size} · Descargar</p>
                       </div>
                     </div>
                   </a>
-
                 ) : (
                   /* Burbuja — texto */
-                  <div style={{
-                    padding: '10px 14px',
-                    background: msg.sent ? '#3b82f6' : bubbleInBg,
-                    color: msg.sent ? 'white' : bubbleInColor,
-                    borderRadius: msg.sent ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
-                    fontSize: '14px', lineHeight: '1.4',
-                    border: msg.sent ? 'none' : `1px solid ${bubbleInBorder}`,
-                    boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
-                    transition: 'background 0.3s'
-                  }}>
-                    {/* Nombre del remitente si no es un mensaje enviado por mí */}
-                    {!msg.sent && <div style={{ fontSize: '12px', fontWeight: 'bold', marginBottom: '4px', color: msg.sender_color || '#3b82f6' }}>{msg.sender_name}</div>}
-                    <p style={{ margin: '0 0 4px' }}>{msg.content}</p>
-                    <p style={{
-                      margin: 0, fontSize: '11px', textAlign: 'right',
-                      color: msg.sent ? '#bfdbfe' : timeColor,
-                      display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '3px'
-                    }}>
+                  <div className={`px-3.5 py-2.5 text-sm leading-relaxed shadow-sm transition-colors ${msg.sent ? 'bg-blue-500 text-white rounded-[18px_18px_4px_18px] border-none' : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700 rounded-[18px_18px_18px_4px]'}`}>
+                    {!msg.sent && <div className="text-[12px] font-bold mb-1" style={{ color: msg.sender_color || '#3b82f6' }}>{msg.sender_name}</div>}
+                    <p className="m-0 mb-1">{msg.content}</p>
+                    <p className={`m-0 text-[11px] text-right flex items-center justify-end gap-1 ${msg.sent ? 'text-blue-200' : 'text-slate-500 dark:text-slate-400'}`}>
                       {new Date(msg.created_at).toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' })}
-                      {msg.sent && (
-                        <span style={{ color: msg.read ? '#60a5fa' : '#bfdbfe', fontSize: '13px' }}>
-                          {msg.read ? '✓✓' : '✓'}
-                        </span>
-                      )}
+                      {msg.sent && <span className={`text-[13px] ${msg.read ? 'text-blue-400' : 'text-blue-200'}`}>{msg.read ? '✓✓' : '✓'}</span>}
                     </p>
                   </div>
                 )}
 
-                {/* Reacciones bajo la burbuja */}
+                {/* Reacciones */}
                 {msg.reactions?.length > 0 && (
-                  <div style={{
-                    display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '4px',
-                    justifyContent: msg.sent ? 'flex-end' : 'flex-start'
-                  }}>
+                  <div className={`flex flex-wrap gap-1 mt-1 ${msg.sent ? 'justify-end' : 'justify-start'}`}>
                     {msg.reactions.map(r => (
                       <span key={r.emoji} onClick={() => addReaction(msg.id, r.emoji)}
-                        style={{
-                          background: reactionBg, border: `1px solid ${reactionBorder}`,
-                          borderRadius: '12px', padding: '2px 6px',
-                          fontSize: '12px', cursor: 'pointer',
-                          boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
-                          color: dark ? '#f1f5f9' : '#1e293b'
-                        }}>
+                            className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full px-1.5 py-0.5 text-xs cursor-pointer shadow-sm text-slate-800 dark:text-slate-100 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
                         {r.emoji} {r.count}
                       </span>
                     ))}
@@ -336,38 +212,24 @@ export default function ChatPanel({ activeChat, contacts }) {
 
           {/* Indicador escribiendo */}
           {isTyping && (
-            <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
-              <div style={{
-                background: bubbleInBg, border: `1px solid ${bubbleInBorder}`,
-                borderRadius: '18px 18px 18px 4px',
-                padding: '12px 16px', display: 'flex', gap: '4px', alignItems: 'center'
-              }}>
+            <div className="flex justify-start">
+              <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[18px_18px_18px_4px] px-4 py-3 flex gap-1 items-center shadow-sm">
                 {[0, 1, 2].map(i => (
-                  <span key={i} style={{
-                    width: '7px', height: '7px', borderRadius: '50%',
-                    background: dark ? '#475569' : '#94a3b8',
-                    display: 'inline-block',
-                    animation: 'bounce 1.2s infinite',
-                    animationDelay: `${i * 0.2}s`
-                  }} />
+                  <span key={i} className="w-[7px] h-[7px] rounded-full bg-slate-400 dark:bg-slate-500 inline-block"
+                        style={{ animation: 'bounce 1.2s infinite', animationDelay: `${i * 0.2}s` }} />
                 ))}
               </div>
             </div>
           )}
-
           <div ref={bottomRef} />
         </div>
 
         {/* Emoji picker */}
         {showEmojis && (
-          <div style={{
-            background: inputBarBg, borderTop: `1px solid ${inputBorder}`,
-            padding: '10px 16px', display: 'flex', flexWrap: 'wrap', gap: '8px',
-            transition: 'background 0.3s'
-          }}>
+          <div className="bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 px-4 py-2.5 flex flex-wrap gap-2 transition-colors duration-300">
             {EMOJIS.map(e => (
               <button key={e} onClick={() => setInput(prev => prev + e)}
-                style={{ background: 'none', border: 'none', fontSize: '22px', cursor: 'pointer', padding: '4px' }}>
+                      className="bg-transparent border-none text-[22px] cursor-pointer p-1 hover:scale-110 transition-transform">
                 {e}
               </button>
             ))}
@@ -375,73 +237,36 @@ export default function ChatPanel({ activeChat, contacts }) {
         )}
 
         {/* Barra de input */}
-        <div style={{
-          padding: '12px 16px', background: inputBarBg,
-          borderTop: `1px solid ${inputBorder}`,
-          display: 'flex', alignItems: 'center', gap: '8px',
-          transition: 'background 0.3s'
-        }}>
+        <div className="p-3 bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 flex items-center gap-2 transition-colors duration-300">
           <button onClick={() => setShowEmojis(p => !p)}
-            style={{ background: 'none', border: 'none', fontSize: '22px', cursor: 'pointer', padding: '4px', lineHeight: 1 }}>
-            😊
-          </button>
-
+                  className="bg-transparent border-none text-[22px] cursor-pointer p-1 hover:scale-110 transition-transform leading-none">😊</button>
           <button onClick={() => fileInputRef.current.click()}
-            style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', padding: '4px', lineHeight: 1 }}>
-            📎
-          </button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*,.pdf,.doc,.docx,.txt,.zip"
-            onChange={handleFileChange}
-            style={{ display: 'none' }}
-          />
-
-          {/* 7. EVENTO ONCHANGE ACTUALIZADO (PASO 7) */}
+                  className="bg-transparent border-none text-[20px] cursor-pointer p-1 hover:scale-110 transition-transform leading-none text-slate-500 dark:text-slate-400">📎</button>
+          
+          <input ref={fileInputRef} type="file" accept="image/*,.pdf,.doc,.docx,.txt,.zip" onChange={handleFileChange} className="hidden" />
+          
           <input
             value={input}
             onChange={e => {
               setInput(e.target.value)
               socket.emit('typing:start', { conversationId: activeChat, userName: user?.name })
               clearTimeout(window._typingTimeout)
-              window._typingTimeout = setTimeout(() => {
-                socket.emit('typing:stop', { conversationId: activeChat })
-              }, 2000)
+              window._typingTimeout = setTimeout(() => socket.emit('typing:stop', { conversationId: activeChat }), 2000)
             }}
             onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(input) } }}
             placeholder="Escribe un mensaje..."
-            style={{
-              flex: 1, background: inputBg,
-              border: `1px solid ${inputBorder}`,
-              borderRadius: '24px', padding: '10px 16px', fontSize: '14px',
-              outline: 'none', boxSizing: 'border-box',
-              color: dark ? '#f1f5f9' : '#1e293b',
-              transition: 'background 0.3s'
-            }}
+            className="flex-1 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-full px-4 py-2.5 text-sm outline-none text-slate-800 dark:text-slate-100 transition-colors duration-300 placeholder-slate-400 dark:placeholder-slate-500"
           />
           <button onClick={() => sendMessage(input)}
-            style={{
-              background: '#3b82f6', color: 'white', border: 'none',
-              borderRadius: '50%', width: '40px', height: '40px',
-              cursor: 'pointer', fontSize: '18px', display: 'flex',
-              alignItems: 'center', justifyContent: 'center'
-            }}>➤</button>
+                  className="bg-blue-500 hover:bg-blue-600 text-white border-none rounded-full w-10 h-10 cursor-pointer text-lg flex items-center justify-center transition-colors shadow-sm">
+            ➤
+          </button>
         </div>
 
         <style>{`
-          @keyframes bounce {
-            0%, 60%, 100% { transform: translateY(0); }
-            30% { transform: translateY(-6px); }
-          }
-          @keyframes msgIn {
-            from { opacity: 0; transform: translateY(8px); }
-            to   { opacity: 1; transform: translateY(0); }
-          }
-          @keyframes slideUp {
-            from { opacity: 0; transform: translateY(8px); }
-            to   { opacity: 1; transform: translateY(0); }
-          }
+          @keyframes bounce { 0%, 60%, 100% { transform: translateY(0); } 30% { transform: translateY(-6px); } }
+          @keyframes msgIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+          @keyframes slideUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
         `}</style>
       </div>
     </>

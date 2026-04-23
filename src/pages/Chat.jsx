@@ -43,16 +43,13 @@ export default function Chat() {
   }, [])
 
   if (loading) return (
-    <div style={{
-      height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
-      background: '#f8fafc', fontSize: '14px', color: '#64748b'
-    }}>
+    <div className="h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900 text-sm text-slate-500 dark:text-slate-400 transition-colors duration-300">
       Cargando conversaciones...
     </div>
   )
 
   return (
-    <div style={{ display: 'flex', height: '100vh', background: '#f8fafc' }}>
+    <div className="flex h-screen bg-slate-50 dark:bg-slate-900 transition-colors duration-300">
       <Sidebar
         activeChat={activeChat}
         setActiveChat={setActiveChat}
@@ -63,12 +60,9 @@ export default function Chat() {
       {activeChat
         ? <ChatPanel activeChat={activeChat} contacts={conversations} />
         : (
-          <div style={{
-            flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
-            flexDirection: 'column', gap: '12px', color: '#94a3b8'
-          }}>
-            <span style={{ fontSize: '48px' }}>💬</span>
-            <p style={{ margin: 0, fontSize: '15px' }}>Selecciona una conversación</p>
+          <div className="flex-1 flex flex-col items-center justify-center gap-3 text-slate-400 dark:text-slate-500">
+            <span className="text-5xl">💬</span>
+            <p className="m-0 text-[15px]">Selecciona una conversación</p>
           </div>
         )
       }
