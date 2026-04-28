@@ -26,7 +26,7 @@ export default function ChatPanel({ activeChat, contacts }) {
   const [showGroupMembers, setShowGroupMembers] = useState(false)
   const [groupMembers, setGroupMembers] = useState([])
   
-  // NUEVO: Estados para añadir integrantes
+  // Estados para añadir integrantes
   const [isAddingMember, setIsAddingMember] = useState(false)
   const [memberSearch, setMemberSearch] = useState('')
   const [memberSearchResults, setMemberSearchResults] = useState([])
@@ -45,7 +45,7 @@ export default function ChatPanel({ activeChat, contacts }) {
     }).catch(err => console.error("Error al cargar mensajes:", err))
   }, [activeChat])
 
-  // NUEVO: Buscador de usuarios para añadir al grupo
+  // Buscador de usuarios para añadir al grupo
   useEffect(() => {
     if (!memberSearch.trim()) {
       setMemberSearchResults([])
@@ -54,7 +54,6 @@ export default function ChatPanel({ activeChat, contacts }) {
     const timer = setTimeout(async () => {
       try {
         const res = await api.get(`/conversations/users/search?q=${memberSearch}`)
-        // Filtramos para que no salgan amigos que YA están en el grupo
         const currentIds = groupMembers.map(m => m.id)
         setMemberSearchResults(res.data.filter(u => !currentIds.includes(u.id)))
       } catch (err) {
@@ -160,13 +159,12 @@ export default function ChatPanel({ activeChat, contacts }) {
     }
   }
 
-  // NUEVO: Función para enviar la petición de añadir amigo
   const handleAddMember = async (userId) => {
     try {
       await api.post(`/conversations/${activeChat}/members`, { userId })
       setMemberSearch('')
       setIsAddingMember(false)
-      handleShowMembers() // Recargar la lista visual
+      handleShowMembers() 
     } catch (err) {
       console.error("Error añadiendo integrante:", err)
       alert("Hubo un error al añadir al usuario.")
@@ -192,7 +190,6 @@ export default function ChatPanel({ activeChat, contacts }) {
               <button onClick={() => setShowGroupMembers(false)} className="bg-transparent border-none text-white cursor-pointer hover:scale-110">✕</button>
             </div>
 
-            {/* Panel para buscar y añadir */}
             <div className="p-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900">
               {!isAddingMember ? (
                 <button 
@@ -237,7 +234,6 @@ export default function ChatPanel({ activeChat, contacts }) {
               )}
             </div>
 
-            {/* Lista de integrantes actuales */}
             <div className="p-2 overflow-y-auto custom-scrollbar flex-1">
               {groupMembers.length === 0 ? (
                 <p className="text-center text-slate-500 text-xs py-4">Cargando datos...</p>
@@ -299,7 +295,11 @@ export default function ChatPanel({ activeChat, contacts }) {
 
         {/* Área de mensajes */}
         <div onClick={() => { setShowEmojis(false); setShowReactions(null) }}
-             className="flex-1 overflow-y-auto p-4 flex flex-col gap-2 bg-slate-50 dark:bg-slate-900 transition-colors duration-300 custom-scrollbar">
+             className="flex-1 overflow-y-auto px-4 pb-4 flex flex-col gap-2 bg-slate-50 dark:bg-slate-900 transition-colors duration-300 custom-scrollbar">
+          
+          {/* Espaciador mágico */}
+          <div className="flex-1 min-h-[60px]"></div>
+
           {messages.map((msg) => (
             <div key={msg.id}
                  className={`flex ${msg.sent ? 'justify-end' : 'justify-start'}`}
