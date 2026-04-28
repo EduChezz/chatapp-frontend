@@ -22,9 +22,14 @@ export default function ChatPanel({ activeChat, contacts }) {
   const bottomRef = useRef(null)
   const fileInputRef = useRef(null)
 
-  // 1. Nuevos estados para la gestión de integrantes del grupo
+  // Estados para integrantes del grupo
   const [showGroupMembers, setShowGroupMembers] = useState(false)
   const [groupMembers, setGroupMembers] = useState([])
+  
+  // NUEVO: Estados para añadir integrantes
+  const [isAddingMember, setIsAddingMember] = useState(false)
+  const [memberSearch, setMemberSearch] = useState('')
+  const [memberSearchResults, setMemberSearchResults] = useState([])
 
   const contact = contacts.find(c => c.id === activeChat)
   const messages = allMessages[activeChat] || []
@@ -39,6 +44,25 @@ export default function ChatPanel({ activeChat, contacts }) {
       socket.emit('conversation:join', activeChat)
     }).catch(err => console.error("Error al cargar mensajes:", err))
   }, [activeChat])
+
+  // NUEVO: Buscador de usuarios para añadir al grupo
+  useEffect(() => {
+    if (!memberSearch.trim()) {
+      setMemberSearchResults([])
+      return
+    }
+    const timer = setTimeout(async () => {
+      try {
+        const res = await api.get(`/conversations/users/search?q=${memberSearch}`)
+        // Filtramos para que no salgan amigos que YA están en el grupo
+        const currentIds = groupMembers.map(m => m.id)
+        setMemberSearchResults(res.data.filter(u => !currentIds.includes(u.id)))
+      } catch (err) {
+        console.error("Error buscando usuarios", err)
+      }
+    }, 500)
+    return () => clearTimeout(timer)
+  }, [memberSearch, groupMembers])
 
   useEffect(() => {
     socket.on('message:new', (msg) => {
@@ -111,10 +135,11 @@ export default function ChatPanel({ activeChat, contacts }) {
     setShowReactions(null)
   }
 
-  // 2. Funciones para cargar y expulsar integrantes
   const handleShowMembers = async () => {
     setShowGroupMembers(true)
-    setGroupMembers([]) // Limpiamos datos anteriores
+    setIsAddingMember(false)
+    setMemberSearch('')
+    setGroupMembers([])
     try {
       const res = await api.get(`/conversations/${activeChat}/members`)
       setGroupMembers(res.data)
@@ -126,14 +151,25 @@ export default function ChatPanel({ activeChat, contacts }) {
   const handleRemoveMember = async (memberId) => {
     const confirmDelete = window.confirm("¿Seguro que quieres expulsar a este integrante?")
     if (!confirmDelete) return
-
     try {
       await api.delete(`/conversations/${activeChat}/members/${memberId}`)
-      // Lo borramos visualmente de la lista sin recargar la página
       setGroupMembers(prev => prev.filter(m => m.id !== memberId))
     } catch (err) {
       console.error("Error expulsando:", err)
       alert("Hubo un error al intentar expulsar al usuario.")
+    }
+  }
+
+  // NUEVO: Función para enviar la petición de añadir amigo
+  const handleAddMember = async (userId) => {
+    try {
+      await api.post(`/conversations/${activeChat}/members`, { userId })
+      setMemberSearch('')
+      setIsAddingMember(false)
+      handleShowMembers() // Recargar la lista visual
+    } catch (err) {
+      console.error("Error añadiendo integrante:", err)
+      alert("Hubo un error al añadir al usuario.")
     }
   }
 
@@ -143,21 +179,68 @@ export default function ChatPanel({ activeChat, contacts }) {
     <>
       <ImageViewer src={lightboxSrc} onClose={() => setLightboxSrc(null)} />
 
-      {/* 3. Panel Modal Flotante de Integrantes */}
+      {/* Modal Flotante de Integrantes */}
       {showGroupMembers && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[1000]" onClick={() => setShowGroupMembers(false)}>
           <div 
-            className="bg-white dark:bg-slate-800 w-80 rounded-2xl shadow-2xl overflow-hidden" 
-            style={{ animation: 'slideUp 0.2s cubic-bezier(0.19,1,0.22,1)' }}
+            className="bg-white dark:bg-slate-800 w-80 rounded-2xl shadow-2xl overflow-hidden flex flex-col" 
+            style={{ animation: 'slideUp 0.2s cubic-bezier(0.19,1,0.22,1)', maxHeight: '80vh' }}
             onClick={e => e.stopPropagation()}
           >
             <div className="p-4 bg-purple-600 flex justify-between items-center">
               <h3 className="m-0 text-white font-semibold text-sm">Integrantes del Grupo</h3>
               <button onClick={() => setShowGroupMembers(false)} className="bg-transparent border-none text-white cursor-pointer hover:scale-110">✕</button>
             </div>
-            <div className="p-2 max-h-64 overflow-y-auto custom-scrollbar">
+
+            {/* Panel para buscar y añadir */}
+            <div className="p-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900">
+              {!isAddingMember ? (
+                <button 
+                  onClick={() => setIsAddingMember(true)}
+                  className="w-full py-2 bg-purple-100 hover:bg-purple-200 text-purple-700 dark:bg-purple-900/40 dark:text-purple-400 font-bold text-sm rounded-lg border-none cursor-pointer transition-colors"
+                >
+                  + Añadir Integrante
+                </button>
+              ) : (
+                <div className="flex flex-col gap-2" style={{ animation: 'slideUp 0.2s ease-out' }}>
+                  <div className="flex gap-2">
+                    <input 
+                      autoFocus
+                      value={memberSearch}
+                      onChange={e => setMemberSearch(e.target.value)}
+                      placeholder="Buscar por nombre..."
+                      className="flex-1 px-3 py-1.5 text-sm rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 outline-none focus:border-purple-500"
+                    />
+                    <button onClick={() => { setIsAddingMember(false); setMemberSearch('') }} className="bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 border-none px-3 rounded-md text-xs font-bold cursor-pointer transition-colors text-slate-700 dark:text-slate-300">
+                      Cancelar
+                    </button>
+                  </div>
+                  
+                  {memberSearch && (
+                    <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md max-h-32 overflow-y-auto shadow-sm custom-scrollbar">
+                      {memberSearchResults.length === 0 ? (
+                         <p className="text-xs text-slate-500 p-2 text-center m-0">No se encontraron amigos nuevos.</p>
+                      ) : (
+                        memberSearchResults.map(u => (
+                          <div key={u.id} onClick={() => handleAddMember(u.id)} className="flex items-center gap-2 p-2 hover:bg-purple-50 dark:hover:bg-purple-900/30 cursor-pointer border-b border-slate-100 dark:border-slate-700 last:border-0">
+                            <div className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[10px] font-bold" style={{ backgroundColor: u.avatar_color || '#3b82f6' }}>
+                              {u.name.substring(0,2).toUpperCase()}
+                            </div>
+                            <p className="m-0 text-xs font-medium text-slate-800 dark:text-slate-200 flex-1">{u.name}</p>
+                            <span className="text-xs text-purple-600 dark:text-purple-400 font-bold">Añadir</span>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Lista de integrantes actuales */}
+            <div className="p-2 overflow-y-auto custom-scrollbar flex-1">
               {groupMembers.length === 0 ? (
-                <p className="text-center text-slate-500 text-xs py-4">Cargando datos del servidor...</p>
+                <p className="text-center text-slate-500 text-xs py-4">Cargando datos...</p>
               ) : (
                 groupMembers.map(m => (
                   <div key={m.id} className="flex items-center justify-between p-2 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-lg transition-colors">
@@ -171,12 +254,8 @@ export default function ChatPanel({ activeChat, contacts }) {
                         </p>
                       </div>
                     </div>
-                    {/* Solo mostramos el botón de expulsar si NO eres tú mismo */}
                     {m.id !== user?.id && (
-                      <button
-                        onClick={() => handleRemoveMember(m.id)}
-                        className="bg-red-100 hover:bg-red-200 text-red-600 border-none px-2 py-1 rounded text-[11px] font-bold cursor-pointer transition-colors shadow-sm"
-                      >
+                      <button onClick={() => handleRemoveMember(m.id)} className="bg-red-100 hover:bg-red-200 text-red-600 border-none px-2 py-1 rounded text-[11px] font-bold cursor-pointer transition-colors shadow-sm">
                         Expulsar
                       </button>
                     )}
@@ -190,7 +269,7 @@ export default function ChatPanel({ activeChat, contacts }) {
 
       <div className="flex-1 flex flex-col h-screen bg-slate-50 dark:bg-slate-900 transition-colors duration-300">
         
-        {/* Header Modificado */}
+        {/* Header */}
         <div className="px-5 py-3 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between gap-3 transition-colors duration-300">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-[13px] font-medium shadow-sm"
@@ -208,7 +287,6 @@ export default function ChatPanel({ activeChat, contacts }) {
             </div>
           </div>
 
-          {/* 4. Botón de Configuración del Grupo */}
           {contact?.is_group && (
             <button
               onClick={handleShowMembers}
@@ -231,7 +309,6 @@ export default function ChatPanel({ activeChat, contacts }) {
               
               <div className="relative max-w-[65%]">
                 
-                {/* Botón reacción */}
                 {hoveredMsg === msg.id && (
                   <button onClick={e => { e.stopPropagation(); setShowReactions(showReactions === msg.id ? null : msg.id) }}
                           className={`absolute -top-2.5 ${msg.sent ? '-left-2.5' : '-right-2.5'} bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full w-[26px] h-[26px] cursor-pointer text-[13px] z-10 flex items-center justify-center shadow-md hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors`}>
@@ -239,7 +316,6 @@ export default function ChatPanel({ activeChat, contacts }) {
                   </button>
                 )}
 
-                {/* Picker de reacciones */}
                 {showReactions === msg.id && (
                   <div onClick={e => e.stopPropagation()}
                        className={`absolute -top-[46px] ${msg.sent ? 'left-0' : 'right-0'} bg-white dark:bg-slate-800 rounded-full px-2.5 py-1.5 flex gap-1.5 shadow-lg border border-slate-200 dark:border-slate-700 z-20`}
@@ -253,14 +329,12 @@ export default function ChatPanel({ activeChat, contacts }) {
                   </div>
                 )}
 
-                {/* Burbuja — imagen */}
                 {msg.type === 'image' ? (
                   <div onClick={() => setLightboxSrc(msg.content)}
                        className={`overflow-hidden cursor-zoom-in border border-slate-200 dark:border-slate-700 shadow-sm ${msg.sent ? 'rounded-[18px_18px_4px_18px]' : 'rounded-[18px_18px_18px_4px]'}`}>
                     <img src={msg.content} alt="img" className="block max-w-[220px] max-h-[200px] object-cover" />
                   </div>
                 ) : msg.type === 'file' ? (
-                  /* Burbuja — archivo */
                   <a href={msg.content} target="_blank" rel="noreferrer" className="no-underline">
                     <div className={`px-3.5 py-2.5 flex items-center gap-2.5 shadow-sm cursor-pointer transition-colors ${msg.sent ? 'bg-blue-500 border-none rounded-[18px_18px_4px_18px]' : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[18px_18px_18px_4px]'}`}>
                       <span className="text-2xl">📎</span>
@@ -271,7 +345,6 @@ export default function ChatPanel({ activeChat, contacts }) {
                     </div>
                   </a>
                 ) : (
-                  /* Burbuja — texto */
                   <div className={`px-3.5 py-2.5 text-sm leading-relaxed shadow-sm transition-colors ${msg.sent ? 'bg-blue-500 text-white rounded-[18px_18px_4px_18px] border-none' : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700 rounded-[18px_18px_18px_4px]'}`}>
                     {!msg.sent && <div className="text-[12px] font-bold mb-1" style={{ color: msg.sender_color || '#3b82f6' }}>{msg.sender_name}</div>}
                     <p className="m-0 mb-1">{msg.content}</p>
@@ -282,7 +355,6 @@ export default function ChatPanel({ activeChat, contacts }) {
                   </div>
                 )}
 
-                {/* Reacciones */}
                 {msg.reactions?.length > 0 && (
                   <div className={`flex flex-wrap gap-1 mt-1 ${msg.sent ? 'justify-end' : 'justify-start'}`}>
                     {msg.reactions.map(r => (
@@ -297,7 +369,6 @@ export default function ChatPanel({ activeChat, contacts }) {
             </div>
           ))}
 
-          {/* Indicador escribiendo */}
           {isTyping && (
             <div className="flex justify-start">
               <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[18px_18px_18px_4px] px-4 py-3 flex gap-1 items-center shadow-sm">
@@ -311,7 +382,6 @@ export default function ChatPanel({ activeChat, contacts }) {
           <div ref={bottomRef} />
         </div>
 
-        {/* Emoji picker */}
         {showEmojis && (
           <div className="bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 px-4 py-2.5 flex flex-wrap gap-2 transition-colors duration-300">
             {EMOJIS.map(e => (
@@ -323,7 +393,6 @@ export default function ChatPanel({ activeChat, contacts }) {
           </div>
         )}
 
-        {/* Barra de input */}
         <div className="p-3 bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 flex items-center gap-2 transition-colors duration-300">
           <button onClick={() => setShowEmojis(p => !p)}
                   className="bg-transparent border-none text-[22px] cursor-pointer p-1 hover:scale-110 transition-transform leading-none">😊</button>
