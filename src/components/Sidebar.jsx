@@ -12,6 +12,11 @@ export default function Sidebar({ activeChat, setActiveChat, contacts, setContac
   const [searchResults, setSearchResults] = useState([])
   const [showProfile, setShowProfile] = useState(false)
 
+  // Nuevos estados para la creación de grupos
+  const [isCreatingGroup, setIsCreatingGroup] = useState(false)
+  const [groupName, setGroupName] = useState('')
+  const [selectedMembers, setSelectedMembers] = useState([])
+
   // 1. Cargar las conversaciones
   const loadConversations = async () => {
     try {
@@ -43,7 +48,7 @@ export default function Sidebar({ activeChat, setActiveChat, contacts, setContac
     return () => clearTimeout(timer)
   }, [search])
 
-  // 3. Crear chat nuevo
+  // 3. Crear chat directo (1 a 1)
   const startChat = async (otherUserId, otherUserName) => {
     try {
       const res = await api.post('/conversations', {
@@ -60,8 +65,41 @@ export default function Sidebar({ activeChat, setActiveChat, contacts, setContac
     }
   }
 
+  // 4. Crear chat grupal
+  const handleCreateGroup = async () => {
+    if (!groupName.trim() || selectedMembers.length === 0) return
+    try {
+      const res = await api.post('/conversations', {
+        name: groupName,
+        is_group: true,
+        member_ids: selectedMembers.map(m => m.id),
+        color: '#7c3aed' // Un color morado por defecto para los grupos
+      })
+      await loadConversations()
+      setActiveChat(res.data.id)
+      
+      // Limpiar estados al terminar
+      setIsCreatingGroup(false)
+      setGroupName('')
+      setSelectedMembers([])
+      setSearch('')
+      setSearchResults([])
+    } catch (err) {
+      console.error("Error creando grupo", err)
+    }
+  }
+
+  // Agregar/quitar miembros a la lista del grupo
+  const toggleMemberSelection = (selectedUser) => {
+    const isAlreadySelected = selectedMembers.find(m => m.id === selectedUser.id)
+    if (isAlreadySelected) {
+      setSelectedMembers(prev => prev.filter(m => m.id !== selectedUser.id))
+    } else {
+      setSelectedMembers([...selectedMembers, selectedUser])
+    }
+  }
+
   return (
-    // Contenedor principal con Tailwind (Ancho fijo en PC, adaptable, modo oscuro activo)
     <div className="w-80 flex flex-col h-screen border-r transition-colors duration-300 bg-slate-800 dark:bg-slate-900 border-slate-700 dark:border-slate-800">
       
       {/* Cabecera del usuario */}
@@ -71,7 +109,6 @@ export default function Sidebar({ activeChat, setActiveChat, contacts, setContac
           className="flex items-center gap-2.5 cursor-pointer hover:opacity-80 transition-opacity"
           title="Editar perfil"
         >
-          {/* Avatar (El color de fondo sí se queda como style porque viene de la BD) */}
           <div 
             className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold"
             style={{ backgroundColor: user?.avatar_color || '#3b82f6' }}
@@ -100,44 +137,93 @@ export default function Sidebar({ activeChat, setActiveChat, contacts, setContac
         </div>
       </div>
 
-      {/* Buscador */}
-      <div className="px-5 pb-5">
+      {/* Buscador y Botón de Grupo */}
+      <div className="px-5 pb-4 flex gap-2">
         <input 
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Buscar usuarios por nombre..." 
-          className="w-full px-3.5 py-2.5 rounded-lg border-none text-white outline-none focus:ring-2 focus:ring-blue-500 transition-colors bg-slate-700 dark:bg-slate-800 placeholder-slate-400"
+          placeholder="Buscar usuarios..." 
+          className="flex-1 px-3.5 py-2.5 rounded-lg border-none text-white outline-none focus:ring-2 focus:ring-blue-500 transition-colors bg-slate-700 dark:bg-slate-800 placeholder-slate-400 text-sm"
         />
+        <button 
+          onClick={() => {
+            setIsCreatingGroup(!isCreatingGroup)
+            setSelectedMembers([])
+            setGroupName('')
+          }}
+          className={`px-3 flex items-center justify-center rounded-lg cursor-pointer transition-colors border-none ${isCreatingGroup ? 'bg-blue-500 text-white' : 'bg-slate-700 dark:bg-slate-800 text-slate-300 hover:bg-slate-600'}`}
+          title="Crear Grupo"
+        >
+          👥
+        </button>
       </div>
+
+      {/* Panel de Configuración de Grupo (solo visible si isCreatingGroup es true) */}
+      {isCreatingGroup && (
+        <div className="px-5 pb-4 border-b border-slate-700 dark:border-slate-800">
+          <input 
+            value={groupName}
+            onChange={e => setGroupName(e.target.value)}
+            placeholder="Escribe el nombre del grupo..."
+            className="w-full px-3.5 py-2 rounded-lg border-none text-sm outline-none bg-slate-900 dark:bg-slate-950 text-white mb-3 focus:ring-1 focus:ring-purple-500"
+          />
+          
+          {selectedMembers.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mb-3">
+              {selectedMembers.map(m => (
+                <span key={m.id} className="bg-purple-600 text-[11px] px-2.5 py-1 rounded-full text-white flex items-center gap-1.5 font-medium shadow-sm">
+                  {m.name}
+                  <button onClick={() => toggleMemberSelection(m)} className="bg-transparent border-none text-white text-[10px] cursor-pointer hover:text-red-300 flex items-center justify-center leading-none">✕</button>
+                </span>
+              ))}
+            </div>
+          )}
+
+          <button 
+            onClick={handleCreateGroup}
+            disabled={!groupName.trim() || selectedMembers.length === 0}
+            className="w-full bg-green-500 hover:bg-green-600 disabled:bg-slate-600 disabled:text-slate-400 text-white border-none py-2 rounded-lg text-sm font-bold cursor-pointer transition-colors shadow-sm"
+          >
+            Confirmar Grupo
+          </button>
+        </div>
+      )}
 
       {/* Lista de Resultados / Chats */}
       <div className="flex-1 overflow-y-auto px-2.5 custom-scrollbar">
         
         {searchResults.length > 0 ? (
           <div>
-            <p className="text-slate-400 text-xs px-2.5 mb-2.5 font-bold">RESULTADOS DE BÚSQUEDA</p>
-            {searchResults.map(u => (
-              <div 
-                key={u.id} 
-                onClick={() => startChat(u.id, u.name)}
-                className="flex items-center gap-3 p-3 rounded-xl cursor-pointer mb-1 transition-colors bg-transparent hover:bg-slate-700 dark:hover:bg-slate-800"
-              >
+            <p className="text-slate-400 text-xs px-2.5 mt-2 mb-2.5 font-bold">
+              {isCreatingGroup ? 'SELECCIONA USUARIOS' : 'RESULTADOS DE BÚSQUEDA'}
+            </p>
+            {searchResults.map(u => {
+              const isSelected = selectedMembers.find(m => m.id === u.id)
+              return (
                 <div 
-                  className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold"
-                  style={{ backgroundColor: u.avatar_color || '#64748b' }}
+                  key={u.id} 
+                  onClick={() => isCreatingGroup ? toggleMemberSelection(u) : startChat(u.id, u.name)}
+                  className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer mb-1 transition-colors ${isSelected ? 'bg-purple-500/20 border border-purple-500/50' : 'bg-transparent hover:bg-slate-700 dark:hover:bg-slate-800'}`}
                 >
-                  {u.name.substring(0, 2).toUpperCase()}
+                  <div 
+                    className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold"
+                    style={{ backgroundColor: u.avatar_color || '#64748b' }}
+                  >
+                    {u.name.substring(0, 2).toUpperCase()}
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="m-0 text-white text-sm font-semibold">{u.name}</h4>
+                    <p className="m-0 text-slate-400 text-xs">
+                      {isCreatingGroup ? (isSelected ? 'Seleccionado ✓' : 'Toca para agregar') : 'Toca para chatear'}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h4 className="m-0 text-white text-sm font-semibold">{u.name}</h4>
-                  <p className="m-0 text-slate-400 text-xs">Toca para chatear</p>
-                </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         ) : (
           <div>
-            <p className="text-slate-400 text-xs px-2.5 mb-2.5 font-bold">TUS CHATS</p>
+            <p className="text-slate-400 text-xs px-2.5 mt-2 mb-2.5 font-bold">TUS CHATS</p>
             {contacts?.map(chat => (
               <div 
                 key={chat.id} 
@@ -149,10 +235,11 @@ export default function Sidebar({ activeChat, setActiveChat, contacts, setContac
                 }`}
               >
                 <div 
-                  className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold"
+                  className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold relative"
                   style={{ backgroundColor: chat.color || '#3b82f6' }}
                 >
                   {chat.name?.substring(0, 2).toUpperCase()}
+                  {chat.is_group && <span className="absolute -bottom-1 -right-1 text-xs drop-shadow-md">👥</span>}
                 </div>
                 <div className="flex-1 overflow-hidden">
                   <h4 className="m-0 text-white text-sm font-semibold whitespace-nowrap overflow-hidden text-ellipsis">
