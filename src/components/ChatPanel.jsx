@@ -22,6 +22,10 @@ export default function ChatPanel({ activeChat, contacts }) {
   const bottomRef = useRef(null)
   const fileInputRef = useRef(null)
 
+  // 1. Nuevos estados para la gestión de integrantes del grupo
+  const [showGroupMembers, setShowGroupMembers] = useState(false)
+  const [groupMembers, setGroupMembers] = useState([])
+
   const contact = contacts.find(c => c.id === activeChat)
   const messages = allMessages[activeChat] || []
 
@@ -107,29 +111,112 @@ export default function ChatPanel({ activeChat, contacts }) {
     setShowReactions(null)
   }
 
+  // 2. Funciones para cargar y expulsar integrantes
+  const handleShowMembers = async () => {
+    setShowGroupMembers(true)
+    setGroupMembers([]) // Limpiamos datos anteriores
+    try {
+      const res = await api.get(`/conversations/${activeChat}/members`)
+      setGroupMembers(res.data)
+    } catch (err) {
+      console.error("Error cargando integrantes:", err)
+    }
+  }
+
+  const handleRemoveMember = async (memberId) => {
+    const confirmDelete = window.confirm("¿Seguro que quieres expulsar a este integrante?")
+    if (!confirmDelete) return
+
+    try {
+      await api.delete(`/conversations/${activeChat}/members/${memberId}`)
+      // Lo borramos visualmente de la lista sin recargar la página
+      setGroupMembers(prev => prev.filter(m => m.id !== memberId))
+    } catch (err) {
+      console.error("Error expulsando:", err)
+      alert("Hubo un error al intentar expulsar al usuario.")
+    }
+  }
+
   if (!activeChat) return null
 
   return (
     <>
       <ImageViewer src={lightboxSrc} onClose={() => setLightboxSrc(null)} />
 
+      {/* 3. Panel Modal Flotante de Integrantes */}
+      {showGroupMembers && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[1000]" onClick={() => setShowGroupMembers(false)}>
+          <div 
+            className="bg-white dark:bg-slate-800 w-80 rounded-2xl shadow-2xl overflow-hidden" 
+            style={{ animation: 'slideUp 0.2s cubic-bezier(0.19,1,0.22,1)' }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="p-4 bg-purple-600 flex justify-between items-center">
+              <h3 className="m-0 text-white font-semibold text-sm">Integrantes del Grupo</h3>
+              <button onClick={() => setShowGroupMembers(false)} className="bg-transparent border-none text-white cursor-pointer hover:scale-110">✕</button>
+            </div>
+            <div className="p-2 max-h-64 overflow-y-auto custom-scrollbar">
+              {groupMembers.length === 0 ? (
+                <p className="text-center text-slate-500 text-xs py-4">Cargando datos del servidor...</p>
+              ) : (
+                groupMembers.map(m => (
+                  <div key={m.id} className="flex items-center justify-between p-2 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-lg transition-colors">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-sm" style={{ backgroundColor: m.avatar_color || '#3b82f6' }}>
+                        {m.name?.substring(0, 2).toUpperCase()}
+                      </div>
+                      <div>
+                        <p className="m-0 text-sm font-medium text-slate-800 dark:text-slate-100">
+                          {m.name} {m.id === user?.id && <span className="text-xs text-purple-500">(Tú)</span>}
+                        </p>
+                      </div>
+                    </div>
+                    {/* Solo mostramos el botón de expulsar si NO eres tú mismo */}
+                    {m.id !== user?.id && (
+                      <button
+                        onClick={() => handleRemoveMember(m.id)}
+                        className="bg-red-100 hover:bg-red-200 text-red-600 border-none px-2 py-1 rounded text-[11px] font-bold cursor-pointer transition-colors shadow-sm"
+                      >
+                        Expulsar
+                      </button>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex-1 flex flex-col h-screen bg-slate-50 dark:bg-slate-900 transition-colors duration-300">
         
-        {/* Header */}
-        <div className="px-5 py-3 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex items-center gap-3 transition-colors duration-300">
-          <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-[13px] font-medium"
-               style={{ backgroundColor: contact?.color || '#3b82f6' }}>
-            {contact?.name?.substring(0, 2).toUpperCase() || '?'}
+        {/* Header Modificado */}
+        <div className="px-5 py-3 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between gap-3 transition-colors duration-300">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-[13px] font-medium shadow-sm"
+                 style={{ backgroundColor: contact?.color || '#3b82f6' }}>
+              {contact?.name?.substring(0, 2).toUpperCase() || '?'}
+            </div>
+            <div>
+              <p className="m-0 font-medium text-sm text-slate-800 dark:text-slate-100 transition-colors">
+                {contact?.name || 'Chat'}
+                {contact?.is_group && <span className="ml-1.5 text-xs text-purple-600 dark:text-purple-400 font-bold">👥 Grupo</span>}
+              </p>
+              <p className={`m-0 text-xs transition-colors ${isTyping ? 'text-blue-500' : 'text-slate-500 dark:text-slate-400'}`}>
+                {isTyping ? '✏️ escribiendo...' : (contact?.status || 'en línea')}
+              </p>
+            </div>
           </div>
-          <div>
-            <p className="m-0 font-medium text-sm text-slate-800 dark:text-slate-100 transition-colors">
-              {contact?.name || 'Chat'}
-              {contact?.is_group && <span className="ml-1.5 text-xs text-purple-600 dark:text-purple-400">👥 Grupo</span>}
-            </p>
-            <p className={`m-0 text-xs transition-colors ${isTyping ? 'text-blue-500' : 'text-slate-500 dark:text-slate-400'}`}>
-              {isTyping ? '✏️ escribiendo...' : (contact?.status || 'en línea')}
-            </p>
-          </div>
+
+          {/* 4. Botón de Configuración del Grupo */}
+          {contact?.is_group && (
+            <button
+              onClick={handleShowMembers}
+              className="px-3 py-1.5 bg-purple-100 hover:bg-purple-200 text-purple-600 dark:bg-purple-900/40 dark:text-purple-400 dark:hover:bg-purple-900/60 rounded-lg text-xs font-bold border-none cursor-pointer transition-colors shadow-sm"
+            >
+              👥 Ver Integrantes
+            </button>
+          )}
         </div>
 
         {/* Área de mensajes */}
