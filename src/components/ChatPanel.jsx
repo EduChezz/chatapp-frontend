@@ -318,7 +318,7 @@ export default function ChatPanel({ activeChat, contacts }) {
 
                 {showReactions === msg.id && (
                   <div onClick={e => e.stopPropagation()}
-                       className={`absolute -top-[46px] ${msg.sent ? 'left-0' : 'right-0'} bg-white dark:bg-slate-800 rounded-full px-2.5 py-1.5 flex gap-1.5 shadow-lg border border-slate-200 dark:border-slate-700 z-20`}
+                       className={`absolute -top-[46px] ${msg.sent ? 'right-0' : 'left-0'} bg-white dark:bg-slate-800 rounded-full px-2.5 py-1.5 flex gap-1.5 shadow-lg border border-slate-200 dark:border-slate-700 z-20`}
                        style={{ animation: 'slideUp 0.2s cubic-bezier(0.19,1,0.22,1)' }}>
                     {REACTIONS.map(emoji => (
                       <button key={emoji} onClick={() => addReaction(msg.id, emoji)}
