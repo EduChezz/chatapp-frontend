@@ -12,12 +12,10 @@ export default function Sidebar({ activeChat, setActiveChat, contacts, setContac
   const [searchResults, setSearchResults] = useState([])
   const [showProfile, setShowProfile] = useState(false)
 
-  // Nuevos estados para la creación de grupos
   const [isCreatingGroup, setIsCreatingGroup] = useState(false)
   const [groupName, setGroupName] = useState('')
   const [selectedMembers, setSelectedMembers] = useState([])
 
-  // 1. Cargar las conversaciones
   const loadConversations = async () => {
     try {
       const res = await api.get('/conversations')
@@ -31,7 +29,6 @@ export default function Sidebar({ activeChat, setActiveChat, contacts, setContac
     loadConversations()
   }, [])
 
-  // 2. Buscar usuarios nuevos
   useEffect(() => {
     if (!search.trim()) {
       setSearchResults([])
@@ -48,7 +45,6 @@ export default function Sidebar({ activeChat, setActiveChat, contacts, setContac
     return () => clearTimeout(timer)
   }, [search])
 
-  // 3. Crear chat directo (1 a 1)
   const startChat = async (otherUserId, otherUserName) => {
     try {
       const res = await api.post('/conversations', {
@@ -65,7 +61,6 @@ export default function Sidebar({ activeChat, setActiveChat, contacts, setContac
     }
   }
 
-  // 4. Crear chat grupal
   const handleCreateGroup = async () => {
     if (!groupName.trim() || selectedMembers.length === 0) return
     try {
@@ -73,12 +68,11 @@ export default function Sidebar({ activeChat, setActiveChat, contacts, setContac
         name: groupName,
         is_group: true,
         member_ids: selectedMembers.map(m => m.id),
-        color: '#7c3aed' // Un color morado por defecto para los grupos
+        color: '#7c3aed' 
       })
       await loadConversations()
       setActiveChat(res.data.id)
       
-      // Limpiar estados al terminar
       setIsCreatingGroup(false)
       setGroupName('')
       setSelectedMembers([])
@@ -89,7 +83,6 @@ export default function Sidebar({ activeChat, setActiveChat, contacts, setContac
     }
   }
 
-  // Agregar/quitar miembros a la lista del grupo
   const toggleMemberSelection = (selectedUser) => {
     const isAlreadySelected = selectedMembers.find(m => m.id === selectedUser.id)
     if (isAlreadySelected) {
@@ -102,17 +95,9 @@ export default function Sidebar({ activeChat, setActiveChat, contacts, setContac
   return (
     <div className="w-80 flex flex-col h-screen border-r transition-colors duration-300 bg-slate-800 dark:bg-slate-900 border-slate-700 dark:border-slate-800">
       
-      {/* Cabecera del usuario */}
       <div className="p-5 flex items-center justify-between">
-        <div 
-          onClick={() => setShowProfile(true)}
-          className="flex items-center gap-2.5 cursor-pointer hover:opacity-80 transition-opacity"
-          title="Editar perfil"
-        >
-          <div 
-            className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold"
-            style={{ backgroundColor: user?.avatar_color || '#3b82f6' }}
-          >
+        <div onClick={() => setShowProfile(true)} className="flex items-center gap-2.5 cursor-pointer hover:opacity-80 transition-opacity" title="Editar perfil">
+          <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold" style={{ backgroundColor: user?.avatar_color || '#3b82f6' }}>
             {user?.name?.substring(0, 2).toUpperCase() || 'U'}
           </div>
           <div>
@@ -122,35 +107,24 @@ export default function Sidebar({ activeChat, setActiveChat, contacts, setContac
         </div>
 
         <div className="flex gap-2.5">
-          <button 
-            onClick={toggleTheme} 
-            className="p-2 rounded-lg text-white border-none cursor-pointer transition-colors bg-slate-700 dark:bg-slate-800 hover:bg-slate-600 dark:hover:bg-slate-700"
-          >
+          <button onClick={toggleTheme} className="p-2 rounded-lg text-white border-none cursor-pointer transition-colors bg-slate-700 dark:bg-slate-800 hover:bg-slate-600 dark:hover:bg-slate-700">
             {dark ? '☀️' : '🌙'}
           </button>
-          <button 
-            onClick={logout} 
-            className="px-3 py-2 rounded-lg cursor-pointer text-xs font-bold transition-colors border-none text-white bg-red-500 hover:bg-red-600"
-          >
+          <button onClick={logout} className="px-3 py-2 rounded-lg cursor-pointer text-xs font-bold transition-colors border-none text-white bg-red-500 hover:bg-red-600">
             Salir
           </button>
         </div>
       </div>
 
-      {/* Buscador y Botón de Grupo */}
       <div className="px-5 pb-4 flex gap-2">
         <input 
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Buscar usuarios..." 
+          placeholder={isCreatingGroup ? "Buscar amigos para el grupo..." : "Buscar usuarios..."}
           className="flex-1 px-3.5 py-2.5 rounded-lg border-none text-white outline-none focus:ring-2 focus:ring-blue-500 transition-colors bg-slate-700 dark:bg-slate-800 placeholder-slate-400 text-sm"
         />
         <button 
-          onClick={() => {
-            setIsCreatingGroup(!isCreatingGroup)
-            setSelectedMembers([])
-            setGroupName('')
-          }}
+          onClick={() => { setIsCreatingGroup(!isCreatingGroup); setSelectedMembers([]); setGroupName('') }}
           className={`px-3 flex items-center justify-center rounded-lg cursor-pointer transition-colors border-none ${isCreatingGroup ? 'bg-blue-500 text-white' : 'bg-slate-700 dark:bg-slate-800 text-slate-300 hover:bg-slate-600'}`}
           title="Crear Grupo"
         >
@@ -158,7 +132,6 @@ export default function Sidebar({ activeChat, setActiveChat, contacts, setContac
         </button>
       </div>
 
-      {/* Panel de Configuración de Grupo (solo visible si isCreatingGroup es true) */}
       {isCreatingGroup && (
         <div className="px-5 pb-4 border-b border-slate-700 dark:border-slate-800">
           <input 
@@ -189,10 +162,15 @@ export default function Sidebar({ activeChat, setActiveChat, contacts, setContac
         </div>
       )}
 
-      {/* Lista de Resultados / Chats */}
       <div className="flex-1 overflow-y-auto px-2.5 custom-scrollbar">
         
-        {searchResults.length > 0 ? (
+        {isCreatingGroup && searchResults.length === 0 ? (
+          <div className="p-5 text-center text-slate-400 text-sm mt-8">
+            <div className="text-3xl mb-3">🔍</div>
+            <p className="font-medium text-white">Busca a tus amigos</p>
+            <p className="mt-2 text-xs">Usa la barra de arriba para encontrar usuarios y agregarlos a tu nuevo grupo.</p>
+          </div>
+        ) : searchResults.length > 0 ? (
           <div>
             <p className="text-slate-400 text-xs px-2.5 mt-2 mb-2.5 font-bold">
               {isCreatingGroup ? 'SELECCIONA USUARIOS' : 'RESULTADOS DE BÚSQUEDA'}
@@ -205,10 +183,7 @@ export default function Sidebar({ activeChat, setActiveChat, contacts, setContac
                   onClick={() => isCreatingGroup ? toggleMemberSelection(u) : startChat(u.id, u.name)}
                   className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer mb-1 transition-colors ${isSelected ? 'bg-purple-500/20 border border-purple-500/50' : 'bg-transparent hover:bg-slate-700 dark:hover:bg-slate-800'}`}
                 >
-                  <div 
-                    className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold"
-                    style={{ backgroundColor: u.avatar_color || '#64748b' }}
-                  >
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold" style={{ backgroundColor: u.avatar_color || '#64748b' }}>
                     {u.name.substring(0, 2).toUpperCase()}
                   </div>
                   <div className="flex-1">
@@ -228,16 +203,9 @@ export default function Sidebar({ activeChat, setActiveChat, contacts, setContac
               <div 
                 key={chat.id} 
                 onClick={() => setActiveChat(chat.id)}
-                className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer mb-1 transition-colors duration-200 ${
-                  activeChat === chat.id 
-                    ? 'bg-blue-500' 
-                    : 'hover:bg-slate-700 dark:hover:bg-slate-800'
-                }`}
+                className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer mb-1 transition-colors duration-200 ${activeChat === chat.id ? 'bg-blue-500' : 'hover:bg-slate-700 dark:hover:bg-slate-800'}`}
               >
-                <div 
-                  className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold relative"
-                  style={{ backgroundColor: chat.color || '#3b82f6' }}
-                >
+                <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold relative" style={{ backgroundColor: chat.color || '#3b82f6' }}>
                   {chat.name?.substring(0, 2).toUpperCase()}
                   {chat.is_group && <span className="absolute -bottom-1 -right-1 text-xs drop-shadow-md">👥</span>}
                 </div>
@@ -245,21 +213,12 @@ export default function Sidebar({ activeChat, setActiveChat, contacts, setContac
                   <h4 className="m-0 text-white text-sm font-semibold whitespace-nowrap overflow-hidden text-ellipsis">
                     {chat.name}
                   </h4>
-                  <p className={`m-0 text-xs whitespace-nowrap overflow-hidden text-ellipsis ${
-                    activeChat === chat.id ? 'text-blue-200' : 'text-slate-400'
-                  }`}>
+                  <p className={`m-0 text-xs whitespace-nowrap overflow-hidden text-ellipsis ${activeChat === chat.id ? 'text-blue-200' : 'text-slate-400'}`}>
                     {chat.last_message || 'Inicia la conversación'}
                   </p>
                 </div>
               </div>
             ))}
-            
-            {(!contacts || contacts.length === 0) && search.length === 0 && (
-               <div className="p-5 text-center text-slate-400 text-sm">
-                 <p>Aún no tienes chats.</p>
-                 <p className="mt-2 text-xs">Usa la barra de arriba para buscar a otros usuarios registrados.</p>
-               </div>
-            )}
           </div>
         )}
       </div>
