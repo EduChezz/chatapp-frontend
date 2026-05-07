@@ -30,17 +30,55 @@ export default function Chat() {
     loadConversations()
   }, [])
 
-  // Escuchar nuevo mensaje para actualizar último mensaje en sidebar
+  // ✨ NUEVO: Escuchar mensajes para reordenar y poner el puntito rojo
   useEffect(() => {
-    socket.on('message:new', (msg) => {
-      setConversations(prev => prev.map(c =>
-        c.id === msg.conversation_id
-          ? { ...c, last_message: msg.content, last_message_time: msg.created_at }
-          : c
+    const handleNewMessage = (msg) => {
+      setConversations(prev => {
+        const updatedChats = prev.map(c => {
+          if (c.id === msg.conversation_id) {
+            // Verificamos si el mensaje es nuestro o del otro
+            const isMine = msg.sender_id === user?.id
+            // Verificamos si estamos dentro de este chat actualmente
+            const isCurrentChat = c.id === activeChat
+            
+            // Si el mensaje no es mío y NO estoy en ese chat, sumamos 1 al contador
+            let newUnreadCount = c.unread_count || 0
+            if (!isMine && !isCurrentChat) {
+              newUnreadCount += 1
+            }
+
+            // Cambiamos el texto si es imagen o archivo
+            let previewText = msg.content
+            if (msg.type === 'image') previewText = '📷 Imagen'
+            if (msg.type === 'file') previewText = '📎 Archivo'
+
+            return { 
+              ...c, 
+              last_message: previewText, 
+              last_message_time: msg.created_at,
+              unread_count: newUnreadCount // Guardamos el nuevo contador
+            }
+          }
+          return c
+        })
+
+        // 🔥 Magia: Reordenamos la lista para que el chat más reciente suba al primer lugar
+        return updatedChats.sort((a, b) => new Date(b.last_message_time || 0) - new Date(a.last_message_time || 0))
+      })
+    }
+
+    socket.on('message:new', handleNewMessage)
+    return () => socket.off('message:new', handleNewMessage)
+  }, [activeChat, user]) // Se actualiza si cambiamos de chat
+
+  // ✨ NUEVO: Quitar el puntito rojo (poner en 0) cuando entramos a un chat
+  useEffect(() => {
+    if (activeChat) {
+      setConversations(prev => prev.map(c => 
+        c.id === activeChat ? { ...c, unread_count: 0 } : c
       ))
-    })
-    return () => socket.off('message:new')
-  }, [])
+    }
+  }, [activeChat])
 
   if (loading) return (
     <div className="h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900 text-sm text-slate-500 dark:text-slate-400 transition-colors duration-300">

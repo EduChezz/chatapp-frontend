@@ -209,11 +209,21 @@ export default function Sidebar({ activeChat, setActiveChat, contacts, setContac
                   {chat.name?.substring(0, 2).toUpperCase()}
                   {chat.is_group && <span className="absolute -bottom-1 -right-1 text-xs drop-shadow-md">👥</span>}
                 </div>
-                <div className="flex-1 overflow-hidden">
-                  <h4 className="m-0 text-white text-sm font-semibold whitespace-nowrap overflow-hidden text-ellipsis">
-                    {chat.name}
-                  </h4>
-                  <p className={`m-0 text-xs whitespace-nowrap overflow-hidden text-ellipsis ${activeChat === chat.id ? 'text-blue-200' : 'text-slate-400'}`}>
+                
+                {/* ✨ NUEVO: Título, Mensaje y Puntito Rojo */}
+                <div className="flex-1 overflow-hidden flex flex-col justify-center">
+                  <div className="flex justify-between items-center w-full">
+                    <h4 className="m-0 text-white text-sm font-semibold whitespace-nowrap overflow-hidden text-ellipsis flex-1">
+                      {chat.name}
+                    </h4>
+                    {/* El puntito rojo del contador */}
+                    {chat.unread_count > 0 && activeChat !== chat.id && (
+                      <div className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-sm ml-2 min-w-[20px] text-center" style={{ animation: 'bounce 0.3s ease' }}>
+                        {chat.unread_count}
+                      </div>
+                    )}
+                  </div>
+                  <p className={`m-0 text-xs whitespace-nowrap overflow-hidden text-ellipsis mt-0.5 ${activeChat === chat.id ? 'text-blue-200' : (chat.unread_count > 0 ? 'text-white font-semibold' : 'text-slate-400')}`}>
                     {chat.last_message || 'Inicia la conversación'}
                   </p>
                 </div>
