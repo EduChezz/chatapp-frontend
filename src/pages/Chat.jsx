@@ -11,13 +11,13 @@ export default function Chat() {
   const [conversations, setConversations] = useState([])
   const [loading, setLoading] = useState(true)
 
-  // Cargar conversaciones del backend
+  // Carga inicial y unión a salas de socket
   const loadConversations = async () => {
     try {
       const res = await api.get('/conversations')
       setConversations(res.data)
       
-      // 🔥 Nos unimos a TODOS los chats en segundo plano
+      // Nos unimos a todos los canales para escuchar notificaciones de fondo
       res.data.forEach(chat => {
         socket.emit('conversation:join', chat.id)
       })
@@ -36,15 +36,14 @@ export default function Chat() {
     loadConversations()
   }, [])
 
-  // Escuchar mensajes para reordenar la lista y poner el puntito rojo
+  // ÚNICO ESCUCHA: Reordenamiento, punto rojo y resurrección de chats
   useEffect(() => {
     const handleNewMessage = (msg) => {
       setConversations(prev => {
-        // 🔥 Verificar si el chat existe en la lista actual
-        const chatExists = prev.some(c => c.id === msg.conversation_id)
+        const chatExists = prev.find(c => c.id === msg.conversation_id)
 
+        // Si el chat no está en la lista (fue eliminado), recargamos para que aparezca
         if (!chatExists) {
-          // Si el chat fue eliminado y nos escriben de nuevo, recargamos la lista
           loadConversations()
           return prev
         }
@@ -73,7 +72,7 @@ export default function Chat() {
           return c
         })
 
-        // 🔥 REORDENAR: El mensaje más reciente siempre arriba (enviado o recibido)
+        // Ordenar: el más reciente arriba de todo
         return updatedChats.sort((a, b) => new Date(b.last_message_time || 0) - new Date(a.last_message_time || 0))
       })
     }
@@ -82,7 +81,7 @@ export default function Chat() {
     return () => socket.off('message:new', handleNewMessage)
   }, [activeChat, user])
 
-  // Quitar el puntito rojo cuando entramos a un chat
+  // Limpiar contador al entrar al chat
   useEffect(() => {
     if (activeChat) {
       setConversations(prev => prev.map(c => 
@@ -91,31 +90,21 @@ export default function Chat() {
     }
   }, [activeChat])
 
-  // Función para eliminar el chat completamente
   const handleDeleteChat = async (chatId) => {
-    const confirmDelete = window.confirm("¿Seguro que quieres eliminar este chat? Se borrarán todos los mensajes.");
-    if (!confirmDelete) return;
-
+    if (!window.confirm("¿Eliminar este chat?")) return;
     try {
       await api.delete(`/conversations/${chatId}`);
       setConversations(prev => prev.filter(c => c.id !== chatId));
-      if (activeChat === chatId) {
-        setActiveChat(null);
-      }
+      if (activeChat === chatId) setActiveChat(null);
     } catch (err) {
-      console.error("Error al eliminar chat:", err);
-      alert("Hubo un problema al intentar eliminar el chat.");
+      console.error("Error al eliminar:", err);
     }
   };
 
-  if (loading) return (
-    <div className="h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900 text-sm text-slate-500 dark:text-slate-400 transition-colors duration-300">
-      Cargando conversaciones...
-    </div>
-  )
+  if (loading) return <div className="h-screen flex items-center justify-center bg-slate-900 text-white">Cargando...</div>
 
   return (
-    <div className="flex h-screen bg-slate-50 dark:bg-slate-900 transition-colors duration-300">
+    <div className="flex h-screen bg-slate-900">
       <Sidebar
         activeChat={activeChat}
         setActiveChat={setActiveChat}
@@ -126,12 +115,7 @@ export default function Chat() {
       />
       {activeChat
         ? <ChatPanel activeChat={activeChat} contacts={conversations} />
-        : (
-          <div className="flex-1 flex flex-col items-center justify-center gap-3 text-slate-400 dark:text-slate-500">
-            <span className="text-5xl">💬</span>
-            <p className="m-0 text-[15px]">Selecciona una conversación</p>
-          </div>
-        )
+        : <div className="flex-1 flex flex-col items-center justify-center text-slate-500">💬 Selecciona un chat para empezar</div>
       }
     </div>
   )
