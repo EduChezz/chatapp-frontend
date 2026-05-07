@@ -37,31 +37,25 @@ export default function ChatPanel({ activeChat, contacts }) {
   useEffect(() => { requestNotificationPermission() }, [])
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages, activeChat])
 
+  // ✨ NUEVO: Función para marcar como leído
+  const markAsRead = async () => {
+    if (!activeChat) return
+    try {
+      await api.put(`/conversations/${activeChat}/read`)
+      socket.emit('message:read', { conversationId: activeChat, readerId: user?.id })
+    } catch (err) {
+      console.error("Error al marcar como leído:", err)
+    }
+  }
+
   useEffect(() => {
     if (!activeChat) return
     api.get(`/messages/${activeChat}`).then(res => {
       setAllMessages(prev => ({ ...prev, [activeChat]: res.data }))
       socket.emit('conversation:join', activeChat)
+      markAsRead() // Marcar apenas entramos al chat
     }).catch(err => console.error("Error al cargar mensajes:", err))
   }, [activeChat])
-
-  // Buscador de usuarios para añadir al grupo
-  useEffect(() => {
-    if (!memberSearch.trim()) {
-      setMemberSearchResults([])
-      return
-    }
-    const timer = setTimeout(async () => {
-      try {
-        const res = await api.get(`/conversations/users/search?q=${memberSearch}`)
-        const currentIds = groupMembers.map(m => m.id)
-        setMemberSearchResults(res.data.filter(u => !currentIds.includes(u.id)))
-      } catch (err) {
-        console.error("Error buscando usuarios", err)
-      }
-    }, 500)
-    return () => clearTimeout(timer)
-  }, [memberSearch, groupMembers])
 
   useEffect(() => {
     socket.on('message:new', (msg) => {
@@ -73,9 +67,26 @@ export default function ChatPanel({ activeChat, contacts }) {
           { ...msg, sent: isMine }
         ]
       }))
-      if (!isMine) {
+      
+      // Si recibo un mensaje y TENGO EL CHAT ABIERTO, lo marco como leído al instante
+      if (!isMine && msg.conversation_id === activeChat) {
+        markAsRead()
+      } else if (!isMine) {
         playNotificationSound()
         showDesktopNotification(contact?.name || 'Nuevo mensaje', msg.content)
+      }
+    })
+
+    // ✨ NUEVO: Escuchar cuando el OTRO lee mis mensajes
+    socket.on('message:read_update', ({ conversationId }) => {
+      if (conversationId === activeChat) {
+        setAllMessages(prev => {
+          const currentMsgs = prev[conversationId] || []
+          return {
+            ...prev,
+            [conversationId]: currentMsgs.map(m => ({ ...m, read: true }))
+          }
+        })
       }
     })
 
@@ -84,6 +95,7 @@ export default function ChatPanel({ activeChat, contacts }) {
 
     return () => {
       socket.off('message:new')
+      socket.off('message:read_update')
       socket.off('typing:start')
       socket.off('typing:stop')
     }
@@ -350,6 +362,7 @@ export default function ChatPanel({ activeChat, contacts }) {
                     <p className="m-0 mb-1">{msg.content}</p>
                     <p className={`m-0 text-[11px] text-right flex items-center justify-end gap-1 ${msg.sent ? 'text-blue-200' : 'text-slate-500 dark:text-slate-400'}`}>
                       {new Date(msg.created_at).toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' })}
+                      {/* 🔥 DOBLE CHECK AZUL: Se activa si msg.read es true */}
                       {msg.sent && <span className={`text-[13px] ${msg.read ? 'text-blue-400' : 'text-blue-200'}`}>{msg.read ? '✓✓' : '✓'}</span>}
                     </p>
                   </div>
