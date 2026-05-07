@@ -15,8 +15,13 @@ export default function Chat() {
   const loadConversations = async () => {
     try {
       const res = await api.get('/conversations')
-      // El backend ya los devuelve ordenados, los guardamos directo
       setConversations(res.data)
+      
+      // 🔥 LA MAGIA: Nos unimos a TODOS los chats en segundo plano para escuchar notificaciones
+      res.data.forEach(chat => {
+        socket.emit('conversation:join', chat.id)
+      })
+
       if (res.data.length > 0 && !activeChat) {
         setActiveChat(res.data[0].id)
       }
@@ -31,7 +36,7 @@ export default function Chat() {
     loadConversations()
   }, [])
 
-  // ✨ NUEVO: Escuchar mensajes para reordenar la lista y poner el puntito rojo
+  // Escuchar mensajes para reordenar la lista y poner el puntito rojo
   useEffect(() => {
     const handleNewMessage = (msg) => {
       setConversations(prev => {
@@ -41,6 +46,7 @@ export default function Chat() {
             const isCurrentChat = c.id === activeChat
             
             let newUnreadCount = c.unread_count || 0
+            // Si el mensaje es de la otra persona y NO estamos viendo ese chat, suma 1 al contador
             if (!isMine && !isCurrentChat) {
               newUnreadCount += 1
             }
@@ -59,7 +65,7 @@ export default function Chat() {
           return c
         })
 
-        // 🔥 MAGIA: Reordenar los chats (el más reciente arriba tipo WhatsApp)
+        // Reordenar los chats (el más reciente arriba tipo WhatsApp)
         return updatedChats.sort((a, b) => new Date(b.last_message_time || 0) - new Date(a.last_message_time || 0))
       })
     }
@@ -77,16 +83,14 @@ export default function Chat() {
     }
   }, [activeChat])
 
-  // 🗑️ NUEVO: Función para eliminar el chat completamente
+  // Función para eliminar el chat completamente
   const handleDeleteChat = async (chatId) => {
     const confirmDelete = window.confirm("¿Seguro que quieres eliminar este chat? Se borrarán todos los mensajes.");
     if (!confirmDelete) return;
 
     try {
       await api.delete(`/conversations/${chatId}`);
-      // Lo quitamos de la lista visualmente
       setConversations(prev => prev.filter(c => c.id !== chatId));
-      // Si estábamos dentro de ese chat, lo cerramos
       if (activeChat === chatId) {
         setActiveChat(null);
       }
@@ -110,7 +114,7 @@ export default function Chat() {
         contacts={conversations}
         setContacts={setConversations}
         onConversationCreated={loadConversations}
-        onDeleteChat={handleDeleteChat} /* 🔥 Pasamos la función al Sidebar */
+        onDeleteChat={handleDeleteChat} 
       />
       {activeChat
         ? <ChatPanel activeChat={activeChat} contacts={conversations} />
