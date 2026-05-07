@@ -4,7 +4,8 @@ import { useAuth } from '../context/AuthContext'
 import ProfileModal from './ProfileModal'
 import api from '../services/api'
 
-export default function Sidebar({ activeChat, setActiveChat, contacts, setContacts }) {
+// 🔥 Agregamos onDeleteChat a las propiedades
+export default function Sidebar({ activeChat, setActiveChat, contacts, setContacts, onDeleteChat }) {
   const { dark, toggleTheme } = useTheme()
   const { user, logout } = useAuth()
   
@@ -205,23 +206,35 @@ export default function Sidebar({ activeChat, setActiveChat, contacts, setContac
                 onClick={() => setActiveChat(chat.id)}
                 className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer mb-1 transition-colors duration-200 ${activeChat === chat.id ? 'bg-blue-500' : 'hover:bg-slate-700 dark:hover:bg-slate-800'}`}
               >
-                <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold relative" style={{ backgroundColor: chat.color || '#3b82f6' }}>
+                <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold relative shrink-0" style={{ backgroundColor: chat.color || '#3b82f6' }}>
                   {chat.name?.substring(0, 2).toUpperCase()}
                   {chat.is_group && <span className="absolute -bottom-1 -right-1 text-xs drop-shadow-md">👥</span>}
                 </div>
                 
-                {/* ✨ NUEVO: Título, Mensaje y Puntito Rojo */}
                 <div className="flex-1 overflow-hidden flex flex-col justify-center">
                   <div className="flex justify-between items-center w-full">
                     <h4 className="m-0 text-white text-sm font-semibold whitespace-nowrap overflow-hidden text-ellipsis flex-1">
                       {chat.name}
                     </h4>
-                    {/* El puntito rojo del contador */}
-                    {chat.unread_count > 0 && activeChat !== chat.id && (
-                      <div className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-sm ml-2 min-w-[20px] text-center" style={{ animation: 'bounce 0.3s ease' }}>
-                        {chat.unread_count}
-                      </div>
-                    )}
+                    
+                    {/* Contenedor del contador y botón eliminar */}
+                    <div className="flex items-center gap-1 shrink-0 ml-2">
+                      {chat.unread_count > 0 && activeChat !== chat.id && (
+                        <div className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-sm min-w-[20px] text-center" style={{ animation: 'bounce 0.3s ease' }}>
+                          {chat.unread_count}
+                        </div>
+                      )}
+                      
+                      {/* 🗑️ Botón de eliminar chat */}
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); onDeleteChat?.(chat.id); }}
+                        className="bg-transparent border-none text-slate-400 hover:text-red-400 hover:scale-110 cursor-pointer p-1 transition-transform flex items-center justify-center"
+                        title="Eliminar chat"
+                      >
+                        🗑️
+                      </button>
+                    </div>
+
                   </div>
                   <p className={`m-0 text-xs whitespace-nowrap overflow-hidden text-ellipsis mt-0.5 ${activeChat === chat.id ? 'text-blue-200' : (chat.unread_count > 0 ? 'text-white font-semibold' : 'text-slate-400')}`}>
                     {chat.last_message || 'Inicia la conversación'}

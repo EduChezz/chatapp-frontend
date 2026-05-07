@@ -15,6 +15,7 @@ export default function Chat() {
   const loadConversations = async () => {
     try {
       const res = await api.get('/conversations')
+      // El backend ya los devuelve ordenados, los guardamos directo
       setConversations(res.data)
       if (res.data.length > 0 && !activeChat) {
         setActiveChat(res.data[0].id)
@@ -30,24 +31,20 @@ export default function Chat() {
     loadConversations()
   }, [])
 
-  // ✨ NUEVO: Escuchar mensajes para reordenar y poner el puntito rojo
+  // ✨ NUEVO: Escuchar mensajes para reordenar la lista y poner el puntito rojo
   useEffect(() => {
     const handleNewMessage = (msg) => {
       setConversations(prev => {
         const updatedChats = prev.map(c => {
           if (c.id === msg.conversation_id) {
-            // Verificamos si el mensaje es nuestro o del otro
             const isMine = msg.sender_id === user?.id
-            // Verificamos si estamos dentro de este chat actualmente
             const isCurrentChat = c.id === activeChat
             
-            // Si el mensaje no es mío y NO estoy en ese chat, sumamos 1 al contador
             let newUnreadCount = c.unread_count || 0
             if (!isMine && !isCurrentChat) {
               newUnreadCount += 1
             }
 
-            // Cambiamos el texto si es imagen o archivo
             let previewText = msg.content
             if (msg.type === 'image') previewText = '📷 Imagen'
             if (msg.type === 'file') previewText = '📎 Archivo'
@@ -56,22 +53,22 @@ export default function Chat() {
               ...c, 
               last_message: previewText, 
               last_message_time: msg.created_at,
-              unread_count: newUnreadCount // Guardamos el nuevo contador
+              unread_count: newUnreadCount
             }
           }
           return c
         })
 
-        // 🔥 Magia: Reordenamos la lista para que el chat más reciente suba al primer lugar
+        // 🔥 MAGIA: Reordenar los chats (el más reciente arriba tipo WhatsApp)
         return updatedChats.sort((a, b) => new Date(b.last_message_time || 0) - new Date(a.last_message_time || 0))
       })
     }
 
     socket.on('message:new', handleNewMessage)
     return () => socket.off('message:new', handleNewMessage)
-  }, [activeChat, user]) // Se actualiza si cambiamos de chat
+  }, [activeChat, user])
 
-  // ✨ NUEVO: Quitar el puntito rojo (poner en 0) cuando entramos a un chat
+  // Quitar el puntito rojo cuando entramos a un chat
   useEffect(() => {
     if (activeChat) {
       setConversations(prev => prev.map(c => 
@@ -79,6 +76,25 @@ export default function Chat() {
       ))
     }
   }, [activeChat])
+
+  // 🗑️ NUEVO: Función para eliminar el chat completamente
+  const handleDeleteChat = async (chatId) => {
+    const confirmDelete = window.confirm("¿Seguro que quieres eliminar este chat? Se borrarán todos los mensajes.");
+    if (!confirmDelete) return;
+
+    try {
+      await api.delete(`/conversations/${chatId}`);
+      // Lo quitamos de la lista visualmente
+      setConversations(prev => prev.filter(c => c.id !== chatId));
+      // Si estábamos dentro de ese chat, lo cerramos
+      if (activeChat === chatId) {
+        setActiveChat(null);
+      }
+    } catch (err) {
+      console.error("Error al eliminar chat:", err);
+      alert("Hubo un problema al intentar eliminar el chat.");
+    }
+  };
 
   if (loading) return (
     <div className="h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900 text-sm text-slate-500 dark:text-slate-400 transition-colors duration-300">
@@ -94,6 +110,7 @@ export default function Chat() {
         contacts={conversations}
         setContacts={setConversations}
         onConversationCreated={loadConversations}
+        onDeleteChat={handleDeleteChat} /* 🔥 Pasamos la función al Sidebar */
       />
       {activeChat
         ? <ChatPanel activeChat={activeChat} contacts={conversations} />
