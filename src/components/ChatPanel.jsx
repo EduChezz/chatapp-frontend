@@ -22,11 +22,8 @@ export default function ChatPanel({ activeChat, contacts }) {
   const bottomRef = useRef(null)
   const fileInputRef = useRef(null)
 
-  // Estados para integrantes del grupo
   const [showGroupMembers, setShowGroupMembers] = useState(false)
   const [groupMembers, setGroupMembers] = useState([])
-  
-  // Estados para añadir integrantes
   const [isAddingMember, setIsAddingMember] = useState(false)
   const [memberSearch, setMemberSearch] = useState('')
   const [memberSearchResults, setMemberSearchResults] = useState([])
@@ -37,7 +34,6 @@ export default function ChatPanel({ activeChat, contacts }) {
   useEffect(() => { requestNotificationPermission() }, [])
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages, activeChat])
 
-  // ✨ NUEVO: Función para marcar como leído
   const markAsRead = async () => {
     if (!activeChat) return
     try {
@@ -50,10 +46,11 @@ export default function ChatPanel({ activeChat, contacts }) {
 
   useEffect(() => {
     if (!activeChat) return
+    setIsTyping(false) // Limpiar el estado al cambiar de chat
     api.get(`/messages/${activeChat}`).then(res => {
       setAllMessages(prev => ({ ...prev, [activeChat]: res.data }))
       socket.emit('conversation:join', activeChat)
-      markAsRead() // Marcar apenas entramos al chat
+      markAsRead()
     }).catch(err => console.error("Error al cargar mensajes:", err))
   }, [activeChat])
 
@@ -68,7 +65,6 @@ export default function ChatPanel({ activeChat, contacts }) {
         ]
       }))
       
-      // Si recibo un mensaje y TENGO EL CHAT ABIERTO, lo marco como leído al instante
       if (!isMine && msg.conversation_id === activeChat) {
         markAsRead()
       } else if (!isMine) {
@@ -77,7 +73,6 @@ export default function ChatPanel({ activeChat, contacts }) {
       }
     })
 
-    // ✨ NUEVO: Escuchar cuando el OTRO lee mis mensajes
     socket.on('message:read_update', ({ conversationId }) => {
       if (conversationId === activeChat) {
         setAllMessages(prev => {
@@ -90,8 +85,13 @@ export default function ChatPanel({ activeChat, contacts }) {
       }
     })
 
-    socket.on('typing:start', () => setIsTyping(true))
-    socket.on('typing:stop', () => setIsTyping(false))
+    // 🔥 FILTRO: Solo se activa el "escribiendo..." si es en el chat actual
+    socket.on('typing:start', ({ conversationId }) => {
+      if (conversationId === activeChat) setIsTyping(true)
+    })
+    socket.on('typing:stop', ({ conversationId }) => {
+      if (conversationId === activeChat) setIsTyping(false)
+    })
 
     return () => {
       socket.off('message:new')
@@ -189,7 +189,6 @@ export default function ChatPanel({ activeChat, contacts }) {
     <>
       <ImageViewer src={lightboxSrc} onClose={() => setLightboxSrc(null)} />
 
-      {/* Modal Flotante de Integrantes */}
       {showGroupMembers && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[1000]" onClick={() => setShowGroupMembers(false)}>
           <div 
@@ -309,7 +308,6 @@ export default function ChatPanel({ activeChat, contacts }) {
         <div onClick={() => { setShowEmojis(false); setShowReactions(null) }}
              className="flex-1 overflow-y-auto px-4 pb-4 flex flex-col gap-2 bg-slate-50 dark:bg-slate-900 transition-colors duration-300 custom-scrollbar">
           
-          {/* Espaciador mágico */}
           <div className="flex-1 min-h-[60px]"></div>
 
           {messages.map((msg) => (
@@ -362,7 +360,6 @@ export default function ChatPanel({ activeChat, contacts }) {
                     <p className="m-0 mb-1">{msg.content}</p>
                     <p className={`m-0 text-[11px] text-right flex items-center justify-end gap-1 ${msg.sent ? 'text-blue-200' : 'text-slate-500 dark:text-slate-400'}`}>
                       {new Date(msg.created_at).toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' })}
-                      {/* 🔥 DOBLE CHECK AZUL: Se activa si msg.read es true */}
                       {msg.sent && <span className={`text-[13px] ${msg.read ? 'text-blue-400' : 'text-blue-200'}`}>{msg.read ? '✓✓' : '✓'}</span>}
                     </p>
                   </div>

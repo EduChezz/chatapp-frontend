@@ -17,7 +17,7 @@ export default function Chat() {
       const res = await api.get('/conversations')
       setConversations(res.data)
       
-      // 🔥 LA MAGIA: Nos unimos a TODOS los chats en segundo plano para escuchar notificaciones
+      // 🔥 Nos unimos a TODOS los chats en segundo plano
       res.data.forEach(chat => {
         socket.emit('conversation:join', chat.id)
       })
@@ -40,13 +40,21 @@ export default function Chat() {
   useEffect(() => {
     const handleNewMessage = (msg) => {
       setConversations(prev => {
+        // 🔥 Verificar si el chat existe en la lista actual
+        const chatExists = prev.some(c => c.id === msg.conversation_id)
+
+        if (!chatExists) {
+          // Si el chat fue eliminado y nos escriben de nuevo, recargamos la lista
+          loadConversations()
+          return prev
+        }
+
         const updatedChats = prev.map(c => {
           if (c.id === msg.conversation_id) {
             const isMine = msg.sender_id === user?.id
             const isCurrentChat = c.id === activeChat
             
             let newUnreadCount = c.unread_count || 0
-            // Si el mensaje es de la otra persona y NO estamos viendo ese chat, suma 1 al contador
             if (!isMine && !isCurrentChat) {
               newUnreadCount += 1
             }
@@ -65,7 +73,7 @@ export default function Chat() {
           return c
         })
 
-        // Reordenar los chats (el más reciente arriba tipo WhatsApp)
+        // 🔥 REORDENAR: El mensaje más reciente siempre arriba (enviado o recibido)
         return updatedChats.sort((a, b) => new Date(b.last_message_time || 0) - new Date(a.last_message_time || 0))
       })
     }
