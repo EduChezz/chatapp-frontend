@@ -54,10 +54,28 @@ export default function ChatPanel({ activeChat, contacts }) {
     }).catch(err => console.error("Error al cargar mensajes:", err))
   }, [activeChat])
 
+  // ✨ NUEVO: Efecto para buscar usuarios y añadirlos al grupo
+  useEffect(() => {
+    if (!memberSearch.trim()) {
+      setMemberSearchResults([])
+      return
+    }
+    const timer = setTimeout(async () => {
+      try {
+        const res = await api.get(`/conversations/users/search?q=${memberSearch}`)
+        // Filtrar los que ya están en el grupo para no volver a sugerirlos
+        const existingIds = groupMembers.map(m => m.id)
+        setMemberSearchResults(res.data.filter(u => !existingIds.includes(u.id)))
+      } catch (err) {
+        console.error("Error buscando usuarios", err)
+      }
+    }, 500)
+    return () => clearTimeout(timer)
+  }, [memberSearch, groupMembers])
+
   useEffect(() => {
     const handleNewMsg = (msg) => {
       const isMine = msg.sender_id === user?.id
-      // Sincronización en tiempo real: Solo actualizamos si el mensaje es de este chat
       if (msg.conversation_id === activeChat) {
         setAllMessages(prev => ({
           ...prev,
@@ -65,7 +83,6 @@ export default function ChatPanel({ activeChat, contacts }) {
         }))
         if (!isMine) markAsRead()
       } else if (!isMine) {
-        // Notificaciones para chats en segundo plano
         playNotificationSound()
         const senderChat = contacts.find(c => c.id === msg.conversation_id)
         showDesktopNotification(senderChat?.name || 'Nuevo mensaje', msg.content)
@@ -84,7 +101,6 @@ export default function ChatPanel({ activeChat, contacts }) {
       }
     }
 
-    // 🔥 FILTROS DE ESCRITURA: Solo activamos si el ID coincide
     const handleTypingStart = ({ conversationId }) => {
       if (conversationId === activeChat) setIsTyping(true)
     }
@@ -195,8 +211,50 @@ export default function ChatPanel({ activeChat, contacts }) {
           <div className="bg-white dark:bg-slate-800 w-80 rounded-2xl shadow-2xl overflow-hidden flex flex-col" style={{ animation: 'slideUp 0.2s ease', maxHeight: '80vh' }} onClick={e => e.stopPropagation()}>
             <div className="p-4 bg-purple-600 flex justify-between items-center text-white">
               <h3 className="m-0 font-semibold text-sm">Integrantes</h3>
-              <button onClick={() => setShowGroupMembers(false)} className="bg-transparent border-none text-white cursor-pointer">✕</button>
+              <button onClick={() => setShowGroupMembers(false)} className="bg-transparent border-none text-white cursor-pointer hover:scale-110 transition-transform">✕</button>
             </div>
+            
+            {/* ✨ NUEVO: Panel de búsqueda para añadir integrantes */}
+            <div className="p-3 bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700">
+              {!isAddingMember ? (
+                <button onClick={() => setIsAddingMember(true)} className="w-full py-2 bg-purple-100 hover:bg-purple-200 text-purple-700 dark:bg-purple-900/40 dark:text-purple-400 font-bold text-sm rounded-lg border-none cursor-pointer transition-colors">
+                  + Añadir Integrante
+                </button>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  <div className="flex gap-2">
+                    <input 
+                      autoFocus
+                      value={memberSearch}
+                      onChange={e => setMemberSearch(e.target.value)}
+                      placeholder="Buscar por nombre..."
+                      className="flex-1 px-3 py-1.5 text-sm rounded-md border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 outline-none focus:border-purple-500"
+                    />
+                    <button onClick={() => { setIsAddingMember(false); setMemberSearch('') }} className="bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 text-slate-700 dark:text-slate-300 border-none px-3 rounded-md text-xs font-bold cursor-pointer transition-colors">
+                      Cancelar
+                    </button>
+                  </div>
+                  {memberSearch && (
+                    <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md max-h-32 overflow-y-auto shadow-sm custom-scrollbar">
+                      {memberSearchResults.length === 0 ? (
+                         <p className="text-xs text-slate-500 p-2 text-center m-0">No se encontraron usuarios nuevos.</p>
+                      ) : (
+                        memberSearchResults.map(u => (
+                          <div key={u.id} onClick={() => handleAddMember(u.id)} className="flex items-center gap-2 p-2 hover:bg-purple-50 dark:hover:bg-purple-900/30 cursor-pointer border-b border-slate-100 dark:border-slate-700 last:border-0">
+                            <div className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[10px] font-bold" style={{ backgroundColor: u.avatar_color || '#3b82f6' }}>
+                              {u.name.substring(0,2).toUpperCase()}
+                            </div>
+                            <p className="m-0 text-xs font-medium text-slate-800 dark:text-slate-200 flex-1">{u.name}</p>
+                            <span className="text-xs text-purple-600 dark:text-purple-400 font-bold">Añadir</span>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
             <div className="p-2 overflow-y-auto flex-1 custom-scrollbar">
               {groupMembers.map(m => (
                 <div key={m.id} className="flex items-center justify-between p-2 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-lg">
@@ -204,10 +262,10 @@ export default function ChatPanel({ activeChat, contacts }) {
                     <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold" style={{ backgroundColor: m.avatar_color || '#3b82f6' }}>
                       {m.name?.substring(0, 2).toUpperCase()}
                     </div>
-                    <p className="m-0 text-sm font-medium text-slate-800 dark:text-slate-100">{m.name}</p>
+                    <p className="m-0 text-sm font-medium text-slate-800 dark:text-slate-100">{m.name} {m.id === user?.id && <span className="text-xs text-purple-500">(Tú)</span>}</p>
                   </div>
                   {m.id !== user?.id && (
-                    <button onClick={() => handleRemoveMember(m.id)} className="bg-red-100 text-red-600 border-none px-2 py-1 rounded text-[11px] font-bold cursor-pointer">Expulsar</button>
+                    <button onClick={() => handleRemoveMember(m.id)} className="bg-red-100 text-red-600 border-none px-2 py-1 rounded text-[11px] font-bold cursor-pointer hover:bg-red-200">Expulsar</button>
                   )}
                 </div>
               ))}
@@ -233,7 +291,7 @@ export default function ChatPanel({ activeChat, contacts }) {
             </div>
           </div>
           {contact?.is_group && (
-            <button onClick={handleShowMembers} className="px-3 py-1.5 bg-purple-100 text-purple-600 rounded-lg text-xs font-bold border-none cursor-pointer">👥 Integrantes</button>
+            <button onClick={handleShowMembers} className="px-3 py-1.5 bg-purple-100 text-purple-600 hover:bg-purple-200 rounded-lg text-xs font-bold border-none cursor-pointer transition-colors">👥 Integrantes</button>
           )}
         </div>
 
@@ -241,29 +299,72 @@ export default function ChatPanel({ activeChat, contacts }) {
           <div className="flex-1 min-h-[20px]"></div>
           {messages.map((msg) => (
             <div key={msg.id} className={`flex ${msg.sent ? 'justify-end' : 'justify-start'}`} onMouseEnter={() => setHoveredMsg(msg.id)} onMouseLeave={() => { setHoveredMsg(null); setShowReactions(null) }}>
-              <div className="relative max-w-[65%]">
+              <div className="relative max-w-[80%] sm:max-w-[65%]">
+                
+                {hoveredMsg === msg.id && (
+                  <button onClick={e => { e.stopPropagation(); setShowReactions(showReactions === msg.id ? null : msg.id) }}
+                          className={`absolute -top-2.5 ${msg.sent ? '-left-2.5' : '-right-2.5'} bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full w-[26px] h-[26px] cursor-pointer text-[13px] z-10 flex items-center justify-center shadow-md hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors`}>
+                    😊
+                  </button>
+                )}
+
+                {showReactions === msg.id && (
+                  <div onClick={e => e.stopPropagation()}
+                       className={`absolute -top-[46px] ${msg.sent ? 'right-0' : 'left-0'} bg-white dark:bg-slate-800 rounded-full px-2.5 py-1.5 flex gap-1.5 shadow-lg border border-slate-200 dark:border-slate-700 z-20`}
+                       style={{ animation: 'slideUp 0.2s ease' }}>
+                    {REACTIONS.map(emoji => (
+                      <button key={emoji} onClick={() => addReaction(msg.id, emoji)} className="bg-transparent border-none cursor-pointer text-lg p-0.5 hover:scale-110 transition-transform">
+                        {emoji}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
                 {msg.type === 'image' ? (
-                  <div onClick={() => setLightboxSrc(msg.content)} className={`overflow-hidden cursor-zoom-in border border-slate-200 dark:border-slate-700 shadow-sm ${msg.sent ? 'rounded-[18px_18px_4px_18px]' : 'rounded-[18px_18px_18px_4px]'}`}>
-                    <img src={msg.content} alt="img" className="block max-w-[220px] max-h-[200px] object-cover" />
+                  <div className="flex flex-col">
+                    {/* Nombre del remitente encima de la imagen (individual y grupo) */}
+                    {!msg.sent && <span className="text-[11px] font-bold mb-1 ml-1" style={{ color: msg.sender_color || '#3b82f6' }}>{msg.sender_name}</span>}
+                    <div onClick={() => setLightboxSrc(msg.content)} className={`overflow-hidden cursor-zoom-in border border-slate-200 dark:border-slate-700 shadow-sm ${msg.sent ? 'rounded-[18px_18px_4px_18px]' : 'rounded-[18px_18px_18px_4px]'}`}>
+                      <img src={msg.content} alt="img" className="block max-w-[220px] max-h-[200px] object-cover" />
+                    </div>
                   </div>
                 ) : msg.type === 'file' ? (
-                  <a href={msg.content} target="_blank" rel="noreferrer" className="no-underline">
-                    <div className={`px-3.5 py-2.5 flex items-center gap-2.5 shadow-sm ${msg.sent ? 'bg-blue-500 text-white rounded-[18px_18px_4px_18px]' : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700 rounded-[18px_18px_18px_4px]'}`}>
-                      <span className="text-2xl">📎</span>
-                      <div>
-                        <p className="m-0 text-[13px] font-medium">{msg.file_name}</p>
-                        <p className={`m-0 text-[11px] ${msg.sent ? 'text-blue-100' : 'text-slate-500'}`}>{msg.file_size} · Descargar</p>
+                  <div className="flex flex-col">
+                    {/* Nombre del remitente encima del archivo (individual y grupo) */}
+                    {!msg.sent && <span className="text-[11px] font-bold mb-1 ml-1" style={{ color: msg.sender_color || '#3b82f6' }}>{msg.sender_name}</span>}
+                    <a href={msg.content} target="_blank" rel="noreferrer" className="no-underline">
+                      <div className={`px-3.5 py-2.5 flex items-center gap-2.5 shadow-sm text-left ${msg.sent ? 'bg-blue-500 text-white rounded-[18px_18px_4px_18px]' : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700 rounded-[18px_18px_18px_4px]'}`}>
+                        <span className="text-2xl">📎</span>
+                        <div className="overflow-hidden">
+                          <p className="m-0 text-[13px] font-medium whitespace-nowrap overflow-hidden text-ellipsis">{msg.file_name}</p>
+                          <p className={`m-0 text-[11px] ${msg.sent ? 'text-blue-100' : 'text-slate-500'}`}>{msg.file_size} · Descargar</p>
+                        </div>
                       </div>
-                    </div>
-                  </a>
+                    </a>
+                  </div>
                 ) : (
-                  <div className={`px-3.5 py-2.5 text-sm leading-relaxed shadow-sm ${msg.sent ? 'bg-blue-500 text-white rounded-[18px_18px_4px_18px]' : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700 rounded-[18px_18px_18px_4px]'}`}>
-                    {!msg.sent && contact?.is_group && <div className="text-[11px] font-bold mb-1" style={{ color: msg.sender_color || '#3b82f6' }}>{msg.sender_name}</div>}
-                    <p className="m-0 mb-1">{msg.content}</p>
-                    <p className={`m-0 text-[10px] text-right flex items-center justify-end gap-1 ${msg.sent ? 'text-blue-100' : 'text-slate-400'}`}>
+                  <div 
+                    className={`px-3.5 py-2.5 text-sm leading-relaxed shadow-sm text-left ${msg.sent ? 'bg-blue-500 text-white rounded-[18px_18px_4px_18px]' : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700 rounded-[18px_18px_18px_4px]'}`}
+                    style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }} /* 🔥 Evita que el texto largo rompa la pantalla */
+                  >
+                    {/* Nombre del remitente dentro de la burbuja (individual y grupo) */}
+                    {!msg.sent && <div className="text-[11px] font-bold mb-1" style={{ color: msg.sender_color || '#3b82f6' }}>{msg.sender_name}</div>}
+                    <p className="m-0 mb-1 text-left">{msg.content}</p>
+                    <p className={`m-0 text-[10px] flex justify-end items-center gap-1 ${msg.sent ? 'text-blue-100' : 'text-slate-400'}`}>
                       {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       {msg.sent && <span className={`text-[12px] ${msg.read ? 'text-blue-300 font-bold' : 'text-blue-100'}`}>{msg.read ? '✓✓' : '✓'}</span>}
                     </p>
+                  </div>
+                )}
+                
+                {msg.reactions?.length > 0 && (
+                  <div className={`flex flex-wrap gap-1 mt-1 ${msg.sent ? 'justify-end' : 'justify-start'}`}>
+                    {msg.reactions.map(r => (
+                      <span key={r.emoji} onClick={() => addReaction(msg.id, r.emoji)}
+                            className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-full px-1.5 py-0.5 text-xs cursor-pointer shadow-sm text-slate-800 dark:text-slate-100 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
+                        {r.emoji} {r.count}
+                      </span>
+                    ))}
                   </div>
                 )}
               </div>
