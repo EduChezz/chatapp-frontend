@@ -108,16 +108,37 @@ export default function ChatPanel({ activeChat, contacts }) {
       if (conversationId === activeChat) setIsTyping(false)
     }
 
+    // ✨ NUEVO: Escuchar reacciones en tiempo real
+    const handleReactionAdd = ({ messageId, emoji }) => {
+      setAllMessages(prev => {
+        const currentMsgs = prev[activeChat] || []
+        return {
+          ...prev,
+          [activeChat]: currentMsgs.map(m => {
+            if (m.id !== messageId) return m
+            const reactions = m.reactions || []
+            const exists = reactions.find(r => r.emoji === emoji)
+            const newReactions = exists
+              ? reactions.map(r => r.emoji === emoji ? { ...r, count: r.count + 1 } : r)
+              : [...reactions, { emoji, count: 1 }]
+            return { ...m, reactions: newReactions }
+          })
+        }
+      })
+    }
+
     socket.on('message:new', handleNewMsg)
     socket.on('message:read_update', handleReadUpdate)
     socket.on('typing:start', handleTypingStart)
     socket.on('typing:stop', handleTypingStop)
+    socket.on('reaction:add', handleReactionAdd) // ✨ Conectamos el escucha
 
     return () => {
       socket.off('message:new', handleNewMsg)
       socket.off('message:read_update', handleReadUpdate)
       socket.off('typing:start', handleTypingStart)
       socket.off('typing:stop', handleTypingStop)
+      socket.off('reaction:add', handleReactionAdd) // ✨ Apagamos el escucha
     }
   }, [activeChat, contact, user, contacts])
 
@@ -148,20 +169,12 @@ export default function ChatPanel({ activeChat, contacts }) {
   }
 
   const addReaction = (msgId, emoji) => {
-    setAllMessages(prev => {
-      const chatMsgs = prev[activeChat] || []
-      return {
-        ...prev,
-        [activeChat]: chatMsgs.map(m => {
-          if (m.id !== msgId) return m
-          const reactions = m.reactions || []
-          const exists = reactions.find(r => r.emoji === emoji)
-          const newReactions = exists
-            ? reactions.map(r => r.emoji === emoji ? { ...r, count: r.count + 1 } : r)
-            : [...reactions, { emoji, count: 1 }]
-          return { ...m, reactions: newReactions }
-        })
-      }
+    // 🔥 Emitimos la reacción al servidor para que la reparta a todos en tiempo real
+    socket.emit('reaction:add', { 
+      conversationId: activeChat, 
+      messageId: msgId, 
+      emoji, 
+      userId: user?.id 
     })
     setShowReactions(null)
   }
