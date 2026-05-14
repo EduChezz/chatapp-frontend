@@ -19,6 +19,9 @@ export default function ChatPanel({ activeChat, contacts, setActiveChat }) {
   const [hoveredMsg, setHoveredMsg] = useState(null)
   const [showReactions, setShowReactions] = useState(null)
   const [lightboxSrc, setLightboxSrc] = useState(null)
+  const [editingMsg, setEditingMsg] = useState(null)
+  const [editInput, setEditInput] = useState('')
+  const [openMenu, setOpenMenu] = useState(null)
   const bottomRef = useRef(null)
   const fileInputRef = useRef(null)
 
@@ -133,7 +136,40 @@ export default function ChatPanel({ activeChat, contacts, setActiveChat }) {
     }
 
     socket.on('message:new', handleNewMsg)
+    socket.on('message:read_update', ({ conversationId }) => {
+      if (conversationId === activeChat) {
+        setAllMessages(prev => {
+          const currentMsgs = prev[conversationId] || []
+          return {
+            ...prev,
+            [conversationId]: currentMsgs.map(m => ({ ...m, read: true }))
+          }
+        })
+      }
+    })
+
     socket.on('message:read_update', handleReadUpdate)
+    // ✨ ESCUCHA PARA EDICIÓN: Actualiza el texto en la pantalla al instante
+    socket.on('message:edit', ({ messageId, newContent }) => {
+      setAllMessages(prev => {
+        const chatMsgs = prev[activeChat] || []
+        return {
+          ...prev,
+          [activeChat]: chatMsgs.map(m => m.id === messageId ? { ...m, content: newContent, edited: true } : m)
+        }
+      })
+    })
+
+    // ✨ ESCUCHA PARA ELIMINACIÓN: Cambia el globo por el aviso de "eliminado"
+    socket.on('message:delete', ({ messageId }) => {
+      setAllMessages(prev => {
+        const chatMsgs = prev[activeChat] || []
+        return {
+          ...prev,
+          [activeChat]: chatMsgs.map(m => m.id === messageId ? { ...m, content: '🚫 Este mensaje fue eliminado', type: 'deleted' } : m)
+        }
+      })
+    })
     socket.on('typing:start', handleTypingStart)
     socket.on('typing:stop', handleTypingStop)
     socket.on('reaction:add', handleReactionAdd)
@@ -144,6 +180,8 @@ export default function ChatPanel({ activeChat, contacts, setActiveChat }) {
       socket.off('typing:start', handleTypingStart)
       socket.off('typing:stop', handleTypingStop)
       socket.off('reaction:add', handleReactionAdd)
+      socket.off('message:edit')
+      socket.off('message:delete')
     }
   }, [activeChat, contact, user, contacts])
 
