@@ -92,8 +92,13 @@ export default function Sidebar({ activeChat, setActiveChat, contacts, setContac
     }
   }
 
+  const sortedContacts = [...(contacts || [])].sort((a, b) => {
+    const dateA = new Date(a.last_message_at || 0);
+    const dateB = new Date(b.last_message_at || 0);
+    return dateB - dateA; 
+  });
+
   return (
-    // 🔥 MAGIA RESPONSIVE: Cambiamos w-80 por w-full para que se adapte al celular
     <div className="w-full flex flex-col h-screen border-r transition-colors duration-300 bg-slate-800 dark:bg-slate-900 border-slate-700 dark:border-slate-800">
       
       <div className="p-5 flex items-center justify-between">
@@ -200,7 +205,8 @@ export default function Sidebar({ activeChat, setActiveChat, contacts, setContac
         ) : (
           <div>
             <p className="text-slate-400 text-xs px-2.5 mt-2 mb-2.5 font-bold">TUS CHATS</p>
-            {contacts?.map(chat => (
+            
+            {sortedContacts?.map(chat => (
               <div 
                 key={chat.id} 
                 onClick={() => setActiveChat(chat.id)}
