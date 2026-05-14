@@ -300,6 +300,30 @@ export default function ChatPanel({ activeChat, contacts, setActiveChat }) {
       setMemberSearch(''); setIsAddingMember(false); handleShowMembers() 
     } catch (err) { console.error("Error añadiendo integrante:", err) }
   }
+  // ✨ NUEVO: Funciones para Editar y Eliminar
+  const startEdit = (msg) => {
+    setEditingMsg(msg.id)
+    setEditInput(msg.content)
+    setOpenMenu(null)
+  }
+
+  const cancelEdit = () => {
+    setEditingMsg(null)
+    setEditInput('')
+  }
+
+  const saveEdit = (msgId) => {
+    if (!editInput.trim()) return
+    socket.emit('message:edit', { messageId: msgId, conversationId: activeChat, newContent: editInput })
+    setEditingMsg(null)
+  }
+
+  const deleteMessage = (msgId) => {
+    if (window.confirm("¿Seguro que quieres eliminar este mensaje para todos?")) {
+      socket.emit('message:delete', { messageId: msgId, conversationId: activeChat })
+      setOpenMenu(null)
+    }
+  }
 
   if (!activeChat) return null
 
@@ -429,13 +453,51 @@ export default function ChatPanel({ activeChat, contacts, setActiveChat }) {
                     </a>
                   </div>
                 ) : (
-                  <div className={`px-3.5 py-2.5 text-sm leading-relaxed shadow-sm text-left ${msg.sent ? 'bg-blue-500 text-white rounded-[18px_18px_4px_18px]' : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700 rounded-[18px_18px_18px_4px]'}`} style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
+                  <div className={`group relative px-3.5 py-2.5 text-sm leading-relaxed shadow-sm text-left ${msg.sent ? 'bg-blue-500 text-white rounded-[18px_18px_4px_18px]' : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700 rounded-[18px_18px_18px_4px]'}`} style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
                     {!msg.sent && <div className="text-[11px] font-bold mb-1" style={{ color: msg.sender_color || '#3b82f6' }}>{msg.sender_name}</div>}
-                    <p className="m-0 mb-1 text-left">{msg.content}</p>
-                    <p className={`m-0 text-[10px] flex justify-end items-center gap-1 ${msg.sent ? 'text-blue-100' : 'text-slate-400'}`}>
-                      {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      {msg.sent && <span className={`text-[12px] ${msg.read ? 'text-blue-300 font-bold' : 'text-blue-100'}`}>{msg.read ? '✓✓' : '✓'}</span>}
-                    </p>
+                    
+                    {/* 1. BOTÓN DE TRES PUNTOS (Aparece al pasar el mouse) */}
+                    {msg.sent && msg.type !== 'deleted' && editingMsg !== msg.id && (
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); setOpenMenu(openMenu === msg.id ? null : msg.id) }}
+                        className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 bg-transparent border-none text-white cursor-pointer p-1 text-lg leading-none transition-opacity"
+                      >
+                        ⋮
+                      </button>
+                    )}
+
+                    {/* 2. MENÚ DESPLEGABLE */}
+                    {openMenu === msg.id && (
+                      <div className="absolute right-0 top-8 bg-white dark:bg-slate-700 shadow-xl rounded-lg py-1 z-50 border border-slate-200 dark:border-slate-600 w-32">
+                        <button onClick={() => startEdit(msg)} className="w-full text-left px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-600 bg-transparent border-none text-xs text-slate-700 dark:text-slate-200 cursor-pointer">✏️ Editar</button>
+                        <button onClick={() => deleteMessage(msg.id)} className="w-full text-left px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-600 bg-transparent border-none text-xs text-red-500 cursor-pointer">🗑️ Eliminar</button>
+                      </div>
+                    )}
+
+                    {/* 3. LÓGICA DE EDICIÓN O TEXTO NORMAL */}
+                    {editingMsg === msg.id ? (
+                      <div className="flex flex-col gap-2">
+                        <input 
+                          autoFocus
+                          value={editInput}
+                          onChange={(e) => setEditInput(e.target.value)}
+                          className="w-full p-1 text-sm rounded border-none outline-none text-slate-800"
+                        />
+                        <div className="flex justify-end gap-2">
+                          <button onClick={cancelEdit} className="text-[10px] bg-white/20 border-none text-white px-2 py-1 rounded cursor-pointer">Cancelar</button>
+                          <button onClick={() => saveEdit(msg.id)} className="text-[10px] bg-white text-blue-500 font-bold border-none px-2 py-1 rounded cursor-pointer shadow-sm">Guardar</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <p className="m-0 mb-1 text-left">{msg.content}</p>
+                        <p className={`m-0 text-[10px] flex justify-end items-center gap-1 ${msg.sent ? 'text-blue-100' : 'text-slate-400'}`}>
+                          {msg.edited && <span className="italic mr-1">(editado)</span>}
+                          {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          {msg.sent && <span className={`text-[12px] ${msg.read ? 'text-blue-300 font-bold' : 'text-blue-100'}`}>{msg.read ? '✓✓' : '✓'}</span>}
+                        </p>
+                      </>
+                    )}
                   </div>
                 )}
                 
