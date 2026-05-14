@@ -4,7 +4,6 @@ import { useAuth } from '../context/AuthContext'
 import ProfileModal from './ProfileModal'
 import api from '../services/api'
 
-// 🔥 Agregamos onDeleteChat a las propiedades
 export default function Sidebar({ activeChat, setActiveChat, contacts, setContacts, onDeleteChat }) {
   const { dark, toggleTheme } = useTheme()
   const { user, logout } = useAuth()
@@ -94,20 +93,21 @@ export default function Sidebar({ activeChat, setActiveChat, contacts, setContac
   }
 
   return (
-    <div className="w-80 flex flex-col h-screen border-r transition-colors duration-300 bg-slate-800 dark:bg-slate-900 border-slate-700 dark:border-slate-800">
+    // 🔥 MAGIA RESPONSIVE: Cambiamos w-80 por w-full para que se adapte al celular
+    <div className="w-full flex flex-col h-screen border-r transition-colors duration-300 bg-slate-800 dark:bg-slate-900 border-slate-700 dark:border-slate-800">
       
       <div className="p-5 flex items-center justify-between">
         <div onClick={() => setShowProfile(true)} className="flex items-center gap-2.5 cursor-pointer hover:opacity-80 transition-opacity" title="Editar perfil">
-          <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold" style={{ backgroundColor: user?.avatar_color || '#3b82f6' }}>
+          <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold shrink-0" style={{ backgroundColor: user?.avatar_color || '#3b82f6' }}>
             {user?.name?.substring(0, 2).toUpperCase() || 'U'}
           </div>
-          <div>
-            <h3 className="text-white m-0 text-sm font-semibold">{user?.name}</h3>
+          <div className="overflow-hidden">
+            <h3 className="text-white m-0 text-sm font-semibold whitespace-nowrap overflow-hidden text-ellipsis">{user?.name}</h3>
             <p className="text-green-500 m-0 text-xs font-medium">● {user?.status || 'en línea'}</p>
           </div>
         </div>
 
-        <div className="flex gap-2.5">
+        <div className="flex gap-2.5 shrink-0">
           <button onClick={toggleTheme} className="p-2 rounded-lg text-white border-none cursor-pointer transition-colors bg-slate-700 dark:bg-slate-800 hover:bg-slate-600 dark:hover:bg-slate-700">
             {dark ? '☀️' : '🌙'}
           </button>
@@ -121,12 +121,12 @@ export default function Sidebar({ activeChat, setActiveChat, contacts, setContac
         <input 
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder={isCreatingGroup ? "Buscar amigos para el grupo..." : "Buscar usuarios..."}
-          className="flex-1 px-3.5 py-2.5 rounded-lg border-none text-white outline-none focus:ring-2 focus:ring-blue-500 transition-colors bg-slate-700 dark:bg-slate-800 placeholder-slate-400 text-sm"
+          placeholder={isCreatingGroup ? "Buscar amigos..." : "Buscar usuarios..."}
+          className="flex-1 px-3.5 py-2.5 rounded-lg border-none text-white outline-none focus:ring-2 focus:ring-blue-500 transition-colors bg-slate-700 dark:bg-slate-800 placeholder-slate-400 text-sm min-w-0"
         />
         <button 
           onClick={() => { setIsCreatingGroup(!isCreatingGroup); setSelectedMembers([]); setGroupName('') }}
-          className={`px-3 flex items-center justify-center rounded-lg cursor-pointer transition-colors border-none ${isCreatingGroup ? 'bg-blue-500 text-white' : 'bg-slate-700 dark:bg-slate-800 text-slate-300 hover:bg-slate-600'}`}
+          className={`px-3 flex items-center justify-center rounded-lg cursor-pointer transition-colors border-none shrink-0 ${isCreatingGroup ? 'bg-blue-500 text-white' : 'bg-slate-700 dark:bg-slate-800 text-slate-300 hover:bg-slate-600'}`}
           title="Crear Grupo"
         >
           👥
@@ -138,7 +138,7 @@ export default function Sidebar({ activeChat, setActiveChat, contacts, setContac
           <input 
             value={groupName}
             onChange={e => setGroupName(e.target.value)}
-            placeholder="Escribe el nombre del grupo..."
+            placeholder="Nombre del grupo..."
             className="w-full px-3.5 py-2 rounded-lg border-none text-sm outline-none bg-slate-900 dark:bg-slate-950 text-white mb-3 focus:ring-1 focus:ring-purple-500"
           />
           
@@ -184,11 +184,11 @@ export default function Sidebar({ activeChat, setActiveChat, contacts, setContac
                   onClick={() => isCreatingGroup ? toggleMemberSelection(u) : startChat(u.id, u.name)}
                   className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer mb-1 transition-colors ${isSelected ? 'bg-purple-500/20 border border-purple-500/50' : 'bg-transparent hover:bg-slate-700 dark:hover:bg-slate-800'}`}
                 >
-                  <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold" style={{ backgroundColor: u.avatar_color || '#64748b' }}>
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold shrink-0" style={{ backgroundColor: u.avatar_color || '#64748b' }}>
                     {u.name.substring(0, 2).toUpperCase()}
                   </div>
-                  <div className="flex-1">
-                    <h4 className="m-0 text-white text-sm font-semibold">{u.name}</h4>
+                  <div className="flex-1 overflow-hidden">
+                    <h4 className="m-0 text-white text-sm font-semibold whitespace-nowrap overflow-hidden text-ellipsis">{u.name}</h4>
                     <p className="m-0 text-slate-400 text-xs">
                       {isCreatingGroup ? (isSelected ? 'Seleccionado ✓' : 'Toca para agregar') : 'Toca para chatear'}
                     </p>
@@ -211,13 +211,12 @@ export default function Sidebar({ activeChat, setActiveChat, contacts, setContac
                   {chat.is_group && <span className="absolute -bottom-1 -right-1 text-xs drop-shadow-md">👥</span>}
                 </div>
                 
-                <div className="flex-1 overflow-hidden flex flex-col justify-center">
+                <div className="flex-1 overflow-hidden flex flex-col justify-center min-w-0">
                   <div className="flex justify-between items-center w-full">
                     <h4 className="m-0 text-white text-sm font-semibold whitespace-nowrap overflow-hidden text-ellipsis flex-1">
                       {chat.name}
                     </h4>
                     
-                    {/* Contenedor del contador y botón eliminar */}
                     <div className="flex items-center gap-1 shrink-0 ml-2">
                       {chat.unread_count > 0 && activeChat !== chat.id && (
                         <div className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full shadow-sm min-w-[20px] text-center" style={{ animation: 'bounce 0.3s ease' }}>
@@ -225,7 +224,6 @@ export default function Sidebar({ activeChat, setActiveChat, contacts, setContac
                         </div>
                       )}
                       
-                      {/* 🗑️ Botón de eliminar chat */}
                       <button 
                         onClick={(e) => { e.stopPropagation(); onDeleteChat?.(chat.id); }}
                         className="bg-transparent border-none text-slate-400 hover:text-red-400 hover:scale-110 cursor-pointer p-1 transition-transform flex items-center justify-center"

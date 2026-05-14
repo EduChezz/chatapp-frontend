@@ -9,7 +9,8 @@ import { useAuth } from '../context/AuthContext'
 const EMOJIS = ['😀','😂','❤️','🔥','👍','😮','😢','🎉','🙏','💯']
 const REACTIONS = ['❤️','😂','👍','😮','😢','🔥']
 
-export default function ChatPanel({ activeChat, contacts }) {
+// 🔥 MAGIA RESPONSIVE: Recibimos setActiveChat como propiedad
+export default function ChatPanel({ activeChat, contacts, setActiveChat }) {
   const { dark } = useTheme()
   const { user } = useAuth()
   const [allMessages, setAllMessages] = useState({})
@@ -54,7 +55,6 @@ export default function ChatPanel({ activeChat, contacts }) {
     }).catch(err => console.error("Error al cargar mensajes:", err))
   }, [activeChat])
 
-  // ✨ NUEVO: Efecto para buscar usuarios y añadirlos al grupo
   useEffect(() => {
     if (!memberSearch.trim()) {
       setMemberSearchResults([])
@@ -63,7 +63,6 @@ export default function ChatPanel({ activeChat, contacts }) {
     const timer = setTimeout(async () => {
       try {
         const res = await api.get(`/conversations/users/search?q=${memberSearch}`)
-        // Filtrar los que ya están en el grupo para no volver a sugerirlos
         const existingIds = groupMembers.map(m => m.id)
         setMemberSearchResults(res.data.filter(u => !existingIds.includes(u.id)))
       } catch (err) {
@@ -108,7 +107,6 @@ export default function ChatPanel({ activeChat, contacts }) {
       if (conversationId === activeChat) setIsTyping(false)
     }
 
-    // ✨ NUEVO: Escuchar reacciones en tiempo real
     const handleReactionAdd = ({ messageId, emoji }) => {
       setAllMessages(prev => {
         const currentMsgs = prev[activeChat] || []
@@ -131,14 +129,14 @@ export default function ChatPanel({ activeChat, contacts }) {
     socket.on('message:read_update', handleReadUpdate)
     socket.on('typing:start', handleTypingStart)
     socket.on('typing:stop', handleTypingStop)
-    socket.on('reaction:add', handleReactionAdd) // ✨ Conectamos el escucha
+    socket.on('reaction:add', handleReactionAdd)
 
     return () => {
       socket.off('message:new', handleNewMsg)
       socket.off('message:read_update', handleReadUpdate)
       socket.off('typing:start', handleTypingStart)
       socket.off('typing:stop', handleTypingStop)
-      socket.off('reaction:add', handleReactionAdd) // ✨ Apagamos el escucha
+      socket.off('reaction:add', handleReactionAdd)
     }
   }, [activeChat, contact, user, contacts])
 
@@ -169,7 +167,6 @@ export default function ChatPanel({ activeChat, contacts }) {
   }
 
   const addReaction = (msgId, emoji) => {
-    // 🔥 Emitimos la reacción al servidor para que la reparta a todos en tiempo real
     socket.emit('reaction:add', { 
       conversationId: activeChat, 
       messageId: msgId, 
@@ -227,7 +224,6 @@ export default function ChatPanel({ activeChat, contacts }) {
               <button onClick={() => setShowGroupMembers(false)} className="bg-transparent border-none text-white cursor-pointer hover:scale-110 transition-transform">✕</button>
             </div>
             
-            {/* ✨ NUEVO: Panel de búsqueda para añadir integrantes */}
             <div className="p-3 bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700">
               {!isAddingMember ? (
                 <button onClick={() => setIsAddingMember(true)} className="w-full py-2 bg-purple-100 hover:bg-purple-200 text-purple-700 dark:bg-purple-900/40 dark:text-purple-400 font-bold text-sm rounded-lg border-none cursor-pointer transition-colors">
@@ -287,14 +283,23 @@ export default function ChatPanel({ activeChat, contacts }) {
         </div>
       )}
 
-      <div className="flex-1 flex flex-col h-screen bg-slate-50 dark:bg-slate-900 transition-colors duration-300">
-        <div className="px-5 py-3 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between transition-colors">
+      <div className="flex-1 flex flex-col h-screen bg-slate-50 dark:bg-slate-900 transition-colors duration-300 min-w-0">
+        <div className="px-4 py-3 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between transition-colors">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-[13px] font-medium shadow-sm" style={{ backgroundColor: contact?.color || '#3b82f6' }}>
+            
+            {/* 🔥 BOTÓN ATRÁS: Solo visible en móvil, llama a setActiveChat(null) para regresar a la lista */}
+            <button 
+              onClick={() => setActiveChat(null)}
+              className="md:hidden p-1 mr-1 bg-transparent border-none text-slate-600 dark:text-slate-300 text-2xl cursor-pointer hover:scale-110 transition-transform leading-none"
+            >
+              ←
+            </button>
+
+            <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-[13px] font-medium shadow-sm shrink-0" style={{ backgroundColor: contact?.color || '#3b82f6' }}>
               {contact?.name?.substring(0, 2).toUpperCase() || '?'}
             </div>
-            <div>
-              <p className="m-0 font-medium text-sm text-slate-800 dark:text-slate-100">
+            <div className="overflow-hidden">
+              <p className="m-0 font-medium text-sm text-slate-800 dark:text-slate-100 whitespace-nowrap overflow-hidden text-ellipsis">
                 {contact?.name || 'Chat'}
                 {contact?.is_group && <span className="ml-1.5 text-xs text-purple-600 font-bold">👥 Grupo</span>}
               </p>
@@ -304,7 +309,7 @@ export default function ChatPanel({ activeChat, contacts }) {
             </div>
           </div>
           {contact?.is_group && (
-            <button onClick={handleShowMembers} className="px-3 py-1.5 bg-purple-100 text-purple-600 hover:bg-purple-200 rounded-lg text-xs font-bold border-none cursor-pointer transition-colors">👥 Integrantes</button>
+            <button onClick={handleShowMembers} className="px-3 py-1.5 bg-purple-100 text-purple-600 hover:bg-purple-200 rounded-lg text-xs font-bold border-none cursor-pointer transition-colors shrink-0">👥 Integrantes</button>
           )}
         </div>
 
@@ -312,7 +317,7 @@ export default function ChatPanel({ activeChat, contacts }) {
           <div className="flex-1 min-h-[20px]"></div>
           {messages.map((msg) => (
             <div key={msg.id} className={`flex ${msg.sent ? 'justify-end' : 'justify-start'}`} onMouseEnter={() => setHoveredMsg(msg.id)} onMouseLeave={() => { setHoveredMsg(null); setShowReactions(null) }}>
-              <div className="relative max-w-[80%] sm:max-w-[65%]">
+              <div className="relative max-w-[85%] sm:max-w-[65%]">
                 
                 {hoveredMsg === msg.id && (
                   <button onClick={e => { e.stopPropagation(); setShowReactions(showReactions === msg.id ? null : msg.id) }}
@@ -335,7 +340,6 @@ export default function ChatPanel({ activeChat, contacts }) {
 
                 {msg.type === 'image' ? (
                   <div className="flex flex-col">
-                    {/* Nombre del remitente encima de la imagen (individual y grupo) */}
                     {!msg.sent && <span className="text-[11px] font-bold mb-1 ml-1" style={{ color: msg.sender_color || '#3b82f6' }}>{msg.sender_name}</span>}
                     <div onClick={() => setLightboxSrc(msg.content)} className={`overflow-hidden cursor-zoom-in border border-slate-200 dark:border-slate-700 shadow-sm ${msg.sent ? 'rounded-[18px_18px_4px_18px]' : 'rounded-[18px_18px_18px_4px]'}`}>
                       <img src={msg.content} alt="img" className="block max-w-[220px] max-h-[200px] object-cover" />
@@ -343,7 +347,6 @@ export default function ChatPanel({ activeChat, contacts }) {
                   </div>
                 ) : msg.type === 'file' ? (
                   <div className="flex flex-col">
-                    {/* Nombre del remitente encima del archivo (individual y grupo) */}
                     {!msg.sent && <span className="text-[11px] font-bold mb-1 ml-1" style={{ color: msg.sender_color || '#3b82f6' }}>{msg.sender_name}</span>}
                     <a href={msg.content} target="_blank" rel="noreferrer" className="no-underline">
                       <div className={`px-3.5 py-2.5 flex items-center gap-2.5 shadow-sm text-left ${msg.sent ? 'bg-blue-500 text-white rounded-[18px_18px_4px_18px]' : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700 rounded-[18px_18px_18px_4px]'}`}>
@@ -358,9 +361,8 @@ export default function ChatPanel({ activeChat, contacts }) {
                 ) : (
                   <div 
                     className={`px-3.5 py-2.5 text-sm leading-relaxed shadow-sm text-left ${msg.sent ? 'bg-blue-500 text-white rounded-[18px_18px_4px_18px]' : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700 rounded-[18px_18px_18px_4px]'}`}
-                    style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }} /* 🔥 Evita que el texto largo rompa la pantalla */
+                    style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }} 
                   >
-                    {/* Nombre del remitente dentro de la burbuja (individual y grupo) */}
                     {!msg.sent && <div className="text-[11px] font-bold mb-1" style={{ color: msg.sender_color || '#3b82f6' }}>{msg.sender_name}</div>}
                     <p className="m-0 mb-1 text-left">{msg.content}</p>
                     <p className={`m-0 text-[10px] flex justify-end items-center gap-1 ${msg.sent ? 'text-blue-100' : 'text-slate-400'}`}>
