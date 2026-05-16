@@ -90,8 +90,10 @@ export default function ChatPanel({ activeChat, contacts, setActiveChat }) {
           ...prev,
           [activeChat]: [...(prev[activeChat] || []), { ...msg, sent: isMine }]
         }))
-        if (!isMine) markAsRead()
+        if (!isMine) {
+          markAsRead()
           playNotificationSound()
+        }
       } else if (!isMine) {
         playNotificationSound()
         const senderChat = contacts.find(c => c.id === msg.conversation_id)
