@@ -436,11 +436,20 @@ export default function ChatPanel({ activeChat, contacts, setActiveChat }) {
                     </p>
                   </div>
                 ) : msg.type === 'image' ? (
-                  <div className="flex flex-col">
-                    {!msg.sent && <span className="text-[11px] font-bold mb-1 ml-1" style={{ color: msg.sender_color || '#3b82f6' }}>{msg.sender_name}</span>}
+                  <div className="flex flex-col text-left">
+                    {/* 1. Nombre arriba y alineado a la izquierda */}
+                    {!msg.sent && <div className="text-[11px] font-bold mb-1 ml-1" style={{ color: msg.sender_color || '#3b82f6' }}>{msg.sender_name}</div>}
+                    
+                    {/* 2. La foto */}
                     <div onClick={() => setLightboxSrc(msg.content)} className={`overflow-hidden cursor-zoom-in border border-slate-200 dark:border-slate-700 shadow-sm ${msg.sent ? 'rounded-[18px_18px_4px_18px]' : 'rounded-[18px_18px_18px_4px]'}`}>
                       <img src={msg.content} alt="img" className="block max-w-[220px] max-h-[200px] object-cover" />
                     </div>
+
+                    {/* 3. La hora y los vistos (✓✓) debajo de la foto */}
+                    <p className={`m-0 mt-1 text-[10px] flex justify-end items-center gap-1 ${msg.sent ? 'text-blue-500' : 'text-slate-400'}`}>
+                      {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      {msg.sent && <span className={`text-[12px] ${msg.read ? 'text-blue-500 font-bold' : 'text-blue-300'}`}>{msg.read ? '✓✓' : '✓'}</span>}
+                    </p>
                   </div>
                 ) : msg.type === 'file' ? (
                   <div className="flex flex-col">
