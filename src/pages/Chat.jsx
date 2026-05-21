@@ -10,6 +10,7 @@ export default function Chat() {
   const [activeChat, setActiveChat] = useState(null)
   const [conversations, setConversations] = useState([])
   const [loading, setLoading] = useState(true)
+  const [onlineUsers, setOnlineUsers] = useState([])
 
   const loadConversations = async () => {
     try {
@@ -58,6 +59,11 @@ export default function Chat() {
   }, [activeChat, user])
 
   useEffect(() => {
+  socket.on('users:online', (users) => setOnlineUsers(users))
+  return () => socket.off('users:online')
+}, [])
+  
+  useEffect(() => {
     if (activeChat) {
       setConversations(prev => prev.map(c => c.id === activeChat ? { ...c, unread_count: 0 } : c))
     }
@@ -87,6 +93,7 @@ export default function Chat() {
           setContacts={setConversations}
           onConversationCreated={loadConversations}
           onDeleteChat={handleDeleteChat} 
+          onlineUsers={onlineUsers}
         />
       </div>
 

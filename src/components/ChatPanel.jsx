@@ -137,7 +137,22 @@ export default function ChatPanel({ activeChat, contacts, setActiveChat }) {
         }
       })
     }
-
+    
+    const handleReactionRemove = ({ messageId, emoji }) => {
+      setAllMessages(prev => {
+        const currentMsgs = prev[activeChat] || []
+        return {
+          ...prev,
+          [activeChat]: currentMsgs.map(m => {
+            if (m.id !== messageId) return m
+            const newReactions = (m.reactions || [])
+              .map(r => r.emoji === emoji ? { ...r, count: r.count - 1 } : r)
+              .filter(r => r.count > 0)
+            return { ...m, reactions: newReactions }
+          })
+        }
+      })
+    }
     socket.on('message:new', handleNewMsg)
     socket.on('message:read_update', ({ conversationId }) => {
       if (conversationId === activeChat) {
@@ -176,6 +191,7 @@ export default function ChatPanel({ activeChat, contacts, setActiveChat }) {
     socket.on('typing:start', handleTypingStart)
     socket.on('typing:stop', handleTypingStop)
     socket.on('reaction:add', handleReactionAdd)
+    socket.on('reaction:remove', handleReactionRemove) 
 
     return () => {
       socket.off('message:new', handleNewMsg)
@@ -183,6 +199,7 @@ export default function ChatPanel({ activeChat, contacts, setActiveChat }) {
       socket.off('typing:start', handleTypingStart)
       socket.off('typing:stop', handleTypingStop)
       socket.off('reaction:add', handleReactionAdd)
+      socket.off('reaction:remove', handleReactionRemove)
       socket.off('message:edit')
       socket.off('message:delete')
     }

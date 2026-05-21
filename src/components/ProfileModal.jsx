@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
-
+import api from '../services/api'
 
 const AVATAR_COLORS = ['#3b82f6','#7c3aed','#db2777','#ea580c','#16a34a','#0891b2']
 const STATUSES = ['en línea','ocupado','ausente','no molestar']
@@ -11,8 +11,11 @@ export default function ProfileModal({ onClose }) {
   const { dark } = useTheme()
   const [name, setName] = useState(user?.name || '')
   const [bio, setBio] = useState(user?.bio || '')
-  const [color, setColor] = useState(user?.color || '#3b82f6')
+  const [color, setColor] = useState(user?.avatar_color || '#3b82f6')
   const [status, setStatus] = useState(user?.status || 'en línea')
+  const [avatarUrl, setAvatarUrl] = useState(user?.avatar_url || null)
+  const [uploading, setUploading] = useState(false)
+  const fileRef = useRef()
 
   const bg = dark ? '#1e293b' : 'white'
   const text = dark ? '#f1f5f9' : '#1e293b'
@@ -22,14 +25,25 @@ export default function ProfileModal({ onClose }) {
 
   const initials = name.trim().split(' ').map(w => w[0]?.toUpperCase()).slice(0, 2).join('') || 'TU'
 
+  const handlePhotoUpload = async (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    setUploading(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      const res = await api.post('/upload', formData)
+      setAvatarUrl(res.data.url)
+    } catch (err) {
+      console.error('Error subiendo foto:', err)
+    } finally {
+      setUploading(false)
+    }
+  }
+
   const save = async () => {
     try {
-      await updateProfile({
-        name,
-        bio,
-        avatar_color: color,
-        status
-      })
+      await updateProfile({ name, bio, avatar_color: color, status, avatar_url: avatarUrl })
       onClose()
     } catch (err) {
       console.error('Error actualizando perfil:', err)
@@ -48,14 +62,30 @@ export default function ProfileModal({ onClose }) {
       }}>
         <h3 style={{ margin: '0 0 20px', fontSize: '17px', color: text }}>Mi perfil</h3>
 
-        {/* Avatar preview */}
+        {/* Avatar preview con botón de subir */}
         <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '20px' }}>
-          <div style={{
-            width: '72px', height: '72px', borderRadius: '50%', background: color,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: 'white', fontSize: '24px', fontWeight: '600',
-            boxShadow: `0 0 0 4px ${color}33`
-          }}>{initials}</div>
+          <div style={{ position: 'relative', cursor: 'pointer' }} onClick={() => fileRef.current.click()}>
+            {avatarUrl ? (
+              <img src={avatarUrl} alt="avatar" style={{
+                width: '72px', height: '72px', borderRadius: '50%',
+                objectFit: 'cover', boxShadow: `0 0 0 4px ${color}33`
+              }} />
+            ) : (
+              <div style={{
+                width: '72px', height: '72px', borderRadius: '50%', background: color,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: 'white', fontSize: '24px', fontWeight: '600',
+                boxShadow: `0 0 0 4px ${color}33`
+              }}>{uploading ? '...' : initials}</div>
+            )}
+            <div style={{
+              position: 'absolute', bottom: 0, right: 0,
+              background: '#3b82f6', borderRadius: '50%',
+              width: '22px', height: '22px', display: 'flex',
+              alignItems: 'center', justifyContent: 'center', fontSize: '12px'
+            }}>📷</div>
+          </div>
+          <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handlePhotoUpload} />
         </div>
 
         {/* Color avatar */}

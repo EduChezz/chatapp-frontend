@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext'
 import ProfileModal from './ProfileModal'
 import api from '../services/api'
 
-export default function Sidebar({ activeChat, setActiveChat, contacts, setContacts, onDeleteChat }) {
+export default function Sidebar({ activeChat, setActiveChat, contacts, setContacts, onDeleteChat, onlineUsers = [] }) {
   const { dark, toggleTheme } = useTheme()
   const { user, logout } = useAuth()
   
@@ -215,6 +215,10 @@ export default function Sidebar({ activeChat, setActiveChat, contacts, setContac
                 <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold relative shrink-0" style={{ backgroundColor: chat.color || '#3b82f6' }}>
                   {chat.name?.substring(0, 2).toUpperCase()}
                   {chat.is_group && <span className="absolute -bottom-1 -right-1 text-xs drop-shadow-md">👥</span>}
+                  {/* ← AGREGA ESTO para chats 1 a 1 */}
+                  {!chat.is_group && (
+                    <span className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-slate-800 ${onlineUsers.includes(chat.other_user_id) ? 'bg-green-400' : 'bg-slate-500'}`} />
+                  )}
                 </div>
                 
                 <div className="flex-1 overflow-hidden flex flex-col justify-center min-w-0">

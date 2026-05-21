@@ -50,7 +50,10 @@ export function AuthProvider({ children }) {
     return updated
   }
 
-  const logout = () => {
+  const logout = async () => {
+    try {
+      await api.post('/auth/logout')
+    } catch (_) {}
     localStorage.removeItem('token')
     localStorage.removeItem('user')
     socket.disconnect()
