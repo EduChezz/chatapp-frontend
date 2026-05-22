@@ -206,14 +206,14 @@ export default function ChatPanel({ activeChat, contacts, setActiveChat }) {
     }
     }, [activeChat, contact, user, contacts])
 
-    useEffect(() => {
-      if (!contact || contact.is_group || !contact.other_user_id) return
-      let cancelled = false
-      api.get(`/conversations/block/${contact.other_user_id}`)
-        .then(res => { if (!cancelled) setIsBlocked(res.data.is_blocked) })
-        .catch(() => {})
-      return () => { cancelled = true }
-    }, [contact?.other_user_id])
+  useEffect(() => {
+    if (!contact || contact.is_group || !contact.other_user_id) return
+    let cancelled = false
+    api.get(`/conversations/block/${contact.other_user_id}`)
+      .then(res => { if (!cancelled) setIsBlocked(res.data.is_blocked) })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [contact?.other_user_id])
 
   const sendMessage = (text, type = 'text', extra = {}) => {
     if (type === 'text' && !text.trim()) return
@@ -442,7 +442,22 @@ export default function ChatPanel({ activeChat, contacts, setActiveChat }) {
               <p className={`m-0 text-xs ${isTyping ? 'text-blue-500 font-medium' : 'text-slate-500'}`}>{isTyping ? '✏️ escribiendo...' : (contact?.status || 'en línea')}</p>
             </div>
           </div>
-          {contact?.is_group && <button onClick={handleShowMembers} className="px-3 py-1.5 bg-purple-100 text-purple-600 hover:bg-purple-200 rounded-lg text-xs font-bold border-none cursor-pointer transition-colors shrink-0">👥 Integrantes</button>}
+          <div className="flex items-center gap-2 shrink-0">
+            {contact?.is_group && (
+              <button onClick={handleShowMembers} className="px-3 py-1.5 bg-purple-100 text-purple-600 hover:bg-purple-200 rounded-lg text-xs font-bold border-none cursor-pointer transition-colors">
+                👥 Integrantes
+              </button>
+            )}
+            {!contact?.is_group && contact?.other_user_id && (
+              <button
+                onClick={handleBlock}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold border-none cursor-pointer transition-colors ${isBlocked ? 'bg-red-100 text-red-600 hover:bg-red-200' : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-300'}`}
+                title={isBlocked ? 'Desbloquear usuario' : 'Bloquear usuario'}
+              >
+                {isBlocked ? '🔓 Desbloqueado' : '🚫 Bloquear'}
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Zona de Mensajes */}
@@ -589,6 +604,7 @@ export default function ChatPanel({ activeChat, contacts, setActiveChat }) {
               <input ref={fileInputRef} type="file" onChange={handleFileChange} className="hidden" />
               
               <input 
+                disabled={isBlocked}
                 value={input} 
                 onChange={e => {
                   setInput(e.target.value)
@@ -597,8 +613,8 @@ export default function ChatPanel({ activeChat, contacts, setActiveChat }) {
                   window._t = setTimeout(() => socket.emit('typing:stop', { conversationId: activeChat }), 2000)
                 }} 
                 onKeyDown={e => e.key === 'Enter' && input.trim() && sendMessage(input)} 
-                placeholder="Escribe un mensaje..." 
-                className="flex-1 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-full px-4 py-2 text-sm outline-none text-slate-800 dark:text-slate-100" 
+                placeholder={isBlocked ? 'Usuario bloqueado' : 'Escribe un mensaje...'} 
+                className="flex-1 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-full px-4 py-2 text-sm outline-none text-slate-800 dark:text-slate-100 disabled:opacity-50 disabled:cursor-not-allowed" 
               />
               
               {input.trim() ? (
