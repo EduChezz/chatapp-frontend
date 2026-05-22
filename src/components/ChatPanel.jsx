@@ -586,6 +586,12 @@ export default function ChatPanel({ activeChat, contacts, setActiveChat }) {
           </div>
         )}
 
+        {isBlocked && (
+          <div className="px-4 py-2 bg-red-50 dark:bg-red-900/20 border-t border-red-200 dark:border-red-800 text-center text-xs text-red-500 font-medium">
+            🚫 Has bloqueado a este usuario. Desbloquéalo para enviar mensajes.
+          </div>
+        )}
+
         {/* ✨ NUEVO: Barra de envío con la UI de Grabación */}
         <div className="p-3 bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 flex items-center gap-2">
           {!isRecording ? (
@@ -594,7 +600,8 @@ export default function ChatPanel({ activeChat, contacts, setActiveChat }) {
               <button onClick={() => fileInputRef.current.click()} className="bg-transparent border-none text-[18px] cursor-pointer p-1 text-slate-500">📎</button>
               <input ref={fileInputRef} type="file" onChange={handleFileChange} className="hidden" />
               
-              <input 
+              <input
+                disabled={isBlocked} 
                 value={input} 
                 onChange={e => {
                   setInput(e.target.value)
