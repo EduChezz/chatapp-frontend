@@ -192,7 +192,10 @@ export default function ChatPanel({ activeChat, contacts, setActiveChat }) {
     socket.on('typing:start', handleTypingStart)
     socket.on('typing:stop', handleTypingStop)
     socket.on('reaction:add', handleReactionAdd)
-    socket.on('reaction:remove', handleReactionRemove) 
+    socket.on('reaction:remove', handleReactionRemove)
+    socket.on('message:blocked', () => {
+      alert('No puedes enviar mensajes a este usuario porque te ha bloqueado.')
+    }) 
 
     return () => {
       socket.off('message:new', handleNewMsg)
@@ -203,6 +206,7 @@ export default function ChatPanel({ activeChat, contacts, setActiveChat }) {
       socket.off('reaction:remove', handleReactionRemove)
       socket.off('message:edit')
       socket.off('message:delete')
+      socket.off('message:blocked')  
     }
     }, [activeChat, contact, user, contacts])
 
