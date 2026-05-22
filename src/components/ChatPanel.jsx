@@ -101,12 +101,13 @@ export default function ChatPanel({ activeChat, contacts, setActiveChat }) {
         showDesktopNotification(senderChat?.name || 'Nuevo mensaje', msg.content)
       }
     }
-  useEffect(() => {
-    if (!contact || contact.is_group) return
-    api.get(`/conversations/block/${contact.other_user_id}`)
-      .then(res => setIsBlocked(res.data.is_blocked))
-      .catch(() => {})
-  }, [contact?.other_user_id])
+    if (!contact || contact.is_group || !contact.other_user_id) return
+      let cancelled = false
+      api.get(`/conversations/block/${contact.other_user_id}`)
+        .then(res => { if (!cancelled) setIsBlocked(res.data.is_blocked) })
+        .catch(() => {})
+      return () => { cancelled = true }
+    }, [contact?.other_user_id])
 
     const handleReadUpdate = ({ conversationId }) => {
       if (conversationId === activeChat) {
