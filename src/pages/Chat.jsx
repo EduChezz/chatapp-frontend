@@ -64,13 +64,20 @@ export default function Chat() {
 }, [])
 
   useEffect(() => {
-    const handleReconnect = () => {
-      socket.emit('user:join', user?.id)
-      loadConversations()
+  const handleReconnect = async () => {
+    if (!user?.id) return
+    socket.emit('user:join', user?.id)
+    try {
+      const res = await api.get('/conversations')
+      setConversations(res.data)
+      res.data.forEach(chat => socket.emit('conversation:join', chat.id))
+    } catch (err) {
+      console.error('Error recargando tras reconexión:', err)
     }
-    socket.on('connect', handleReconnect)
-    return () => socket.off('connect', handleReconnect)
-  }, [user])
+  }
+  socket.on('connect', handleReconnect)
+  return () => socket.off('connect', handleReconnect)
+}, [user])
   
   useEffect(() => {
     if (activeChat) {
