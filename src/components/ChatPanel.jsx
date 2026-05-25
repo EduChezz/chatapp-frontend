@@ -370,7 +370,12 @@ export default function ChatPanel({ activeChat, contacts, setActiveChat }) {
     try {
       await api.delete(`/conversations/${activeChat}/members/${memberId}`)
       setGroupMembers(prev => prev.filter(m => m.id !== memberId))
-    } catch (err) { console.error("Error expulsando:", err) }
+    } catch (err) {
+      if (err.response?.status === 403) {
+        alert('Solo los admins pueden expulsar miembros')
+      }
+      console.error("Error expulsando:", err)
+    }
   }
 
   const handleAddMember = async (userId) => {
@@ -460,9 +465,16 @@ export default function ChatPanel({ activeChat, contacts, setActiveChat }) {
                 <div key={m.id} className="flex items-center justify-between p-2 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-lg">
                   <div className="flex items-center gap-2">
                     <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold" style={{ backgroundColor: m.avatar_color || '#3b82f6' }}>{m.name?.substring(0, 2).toUpperCase()}</div>
-                    <p className="m-0 text-sm font-medium text-slate-800 dark:text-slate-100">{m.name} {m.id === user?.id && <span className="text-xs text-purple-500">(Tú)</span>}</p>
+                    <div>
+                      <p className="m-0 text-sm font-medium text-slate-800 dark:text-slate-100">
+                        {m.name} {m.id === user?.id && <span className="text-xs text-purple-500">(Tú)</span>}
+                      </p>
+                      <p className="m-0 text-[10px] text-slate-400">{m.role === 'admin' ? '👑 Admin' : '👤 Miembro'}</p>
+                    </div>
                   </div>
-                  {m.id !== user?.id && <button onClick={() => handleRemoveMember(m.id)} className="bg-red-100 text-red-600 border-none px-2 py-1 rounded text-[11px] font-bold cursor-pointer hover:bg-red-200">Expulsar</button>}
+                  {m.id !== user?.id && groupMembers.find(x => x.id === user?.id)?.role === 'admin' && (
+                    <button onClick={() => handleRemoveMember(m.id)} className="bg-red-100 text-red-600 border-none px-2 py-1 rounded text-[11px] font-bold cursor-pointer hover:bg-red-200">Expulsar</button>
+                  )}
                 </div>
               ))}
             </div>
