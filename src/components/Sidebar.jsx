@@ -103,8 +103,11 @@ export default function Sidebar({ activeChat, setActiveChat, contacts, setContac
       
       <div className="p-5 flex items-center justify-between">
         <div onClick={() => setShowProfile(true)} className="flex items-center gap-2.5 cursor-pointer hover:opacity-80 transition-opacity" title="Editar perfil">
-          <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold shrink-0" style={{ backgroundColor: user?.avatar_color || '#3b82f6' }}>
-            {user?.name?.substring(0, 2).toUpperCase() || 'U'}
+          <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold shrink-0 overflow-hidden" style={{ backgroundColor: user?.avatar_color || '#3b82f6' }}>
+            {user?.avatar_url 
+              ? <img src={user.avatar_url} alt="avatar" className="w-full h-full object-cover" />
+              : user?.name?.substring(0, 2).toUpperCase() || 'U'
+            }
           </div>
           <div className="overflow-hidden">
             <h3 className="text-white m-0 text-sm font-semibold whitespace-nowrap overflow-hidden text-ellipsis">{user?.name}</h3>
@@ -189,12 +192,8 @@ export default function Sidebar({ activeChat, setActiveChat, contacts, setContac
                   onClick={() => isCreatingGroup ? toggleMemberSelection(u) : startChat(u.id, u.name)}
                   className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer mb-1 transition-colors ${isSelected ? 'bg-purple-500/20 border border-purple-500/50' : 'bg-transparent hover:bg-slate-700 dark:hover:bg-slate-800'}`}
                 >
-                  <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold shrink-0 overflow-hidden" 
-                    style={{ backgroundColor: user?.avatar_color || '#3b82f6' }}>
-                    {user?.avatar_url 
-                      ? <img src={user.avatar_url} alt="avatar" className="w-full h-full object-cover" />
-                      : user?.name?.substring(0, 2).toUpperCase() || 'U'
-                    }
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold shrink-0" style={{ backgroundColor: u.avatar_color || '#64748b' }}>
+                    {u.name.substring(0, 2).toUpperCase()}
                   </div>
                   <div className="flex-1 overflow-hidden">
                     <h4 className="m-0 text-white text-sm font-semibold whitespace-nowrap overflow-hidden text-ellipsis">{u.name}</h4>
