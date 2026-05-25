@@ -92,11 +92,23 @@ export default function Sidebar({ activeChat, setActiveChat, contacts, setContac
     }
   }
 
+  const handleFavorite = async (e, chatId) => {
+    e.stopPropagation()
+    try {
+      const res = await api.post(`/conversations/favorite/${chatId}`)
+      setContacts(prev => prev.map(c => 
+        c.id === chatId ? { ...c, is_favorite: res.data.is_favorite } : c
+      ))
+    } catch (err) {
+      console.error('Error marcando favorito:', err)
+    }
+  }
+
   const sortedContacts = [...(contacts || [])].sort((a, b) => {
-    const dateA = new Date(a.last_message_at || 0);
-    const dateB = new Date(b.last_message_at || 0);
-    return dateB - dateA; 
-  });
+    if (a.is_favorite && !b.is_favorite) return -1
+    if (!a.is_favorite && b.is_favorite) return 1
+    return new Date(b.last_message_time || 0) - new Date(a.last_message_time || 0)
+  })
 
   return (
     <div className="w-full flex flex-col h-screen border-r transition-colors duration-300 bg-slate-800 dark:bg-slate-900 border-slate-700 dark:border-slate-800">
@@ -237,6 +249,14 @@ export default function Sidebar({ activeChat, setActiveChat, contacts, setContac
                         </div>
                       )}
                       
+                      <button
+                        onClick={(e) => handleFavorite(e, chat.id)}
+                        className="bg-transparent border-none cursor-pointer p-1 transition-transform hover:scale-110 flex items-center justify-center"
+                        title={chat.is_favorite ? 'Quitar de favoritos' : 'Marcar como favorito'}
+                      >
+                        {chat.is_favorite ? '⭐' : '☆'}
+                      </button>
+
                       <button 
                         onClick={(e) => { e.stopPropagation(); onDeleteChat?.(chat.id); }}
                         className="bg-transparent border-none text-slate-400 hover:text-red-400 hover:scale-110 cursor-pointer p-1 transition-transform flex items-center justify-center"
