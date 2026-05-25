@@ -224,6 +224,17 @@ export default function ChatPanel({ activeChat, contacts, setActiveChat }) {
     return () => { cancelled = true }
   }, [contact?.other_user_id])
 
+  useEffect(() => {
+    const handleConnect = () => setIsOnline(true)
+    const handleDisconnect = () => setIsOnline(false)
+    socket.on('connect', handleConnect)
+    socket.on('disconnect', handleDisconnect)
+    return () => {
+      socket.off('connect', handleConnect)
+      socket.off('disconnect', handleDisconnect)
+    }
+  }, [])
+
     const loadMoreMessages = async () => {
       if (loadingMore) return
       const currentPagination = pagination[activeChat]
