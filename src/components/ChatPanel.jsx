@@ -225,13 +225,23 @@ export default function ChatPanel({ activeChat, contacts, setActiveChat }) {
   }, [contact?.other_user_id])
 
   useEffect(() => {
-    const handleConnect = () => setIsOnline(true)
-    const handleDisconnect = () => setIsOnline(false)
-    socket.on('connect', handleConnect)
-    socket.on('disconnect', handleDisconnect)
+    const handleOnline = () => {
+      setIsOnline(true)
+      socket.connect()
+    }
+    const handleOffline = () => setIsOnline(false)
+
+    window.addEventListener('online', handleOnline)
+    window.addEventListener('offline', handleOffline)
+
+    socket.on('connect', () => setIsOnline(true))
+    socket.on('disconnect', () => setIsOnline(false))
+
     return () => {
-      socket.off('connect', handleConnect)
-      socket.off('disconnect', handleDisconnect)
+      window.removeEventListener('online', handleOnline)
+      window.removeEventListener('offline', handleOffline)
+      socket.off('connect')
+      socket.off('disconnect')
     }
   }, [])
 
