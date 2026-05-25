@@ -223,24 +223,36 @@ export default function ChatPanel({ activeChat, contacts, setActiveChat }) {
   }, [contact?.other_user_id])
 
     const loadMoreMessages = async () => {
-    if (loadingMore) return
-    const currentPagination = pagination[activeChat]
-    if (!currentPagination?.hasMore) return
-    setLoadingMore(true)
-    try {
-      const nextPage = currentPagination.page + 1
-      const res = await api.get(`/messages/${activeChat}?page=${nextPage}`)
-      setAllMessages(prev => ({
-        ...prev,
-        [activeChat]: [...res.data.messages, ...(prev[activeChat] || [])]
-      }))
-      setPagination(prev => ({ ...prev, [activeChat]: res.data.pagination }))
-    } catch (err) {
-      console.error('Error cargando más mensajes:', err)
-    } finally {
-      setLoadingMore(false)
+      if (loadingMore) return
+      const currentPagination = pagination[activeChat]
+      if (!currentPagination?.hasMore) return
+      setLoadingMore(true)
+
+      // Guardamos la altura actual antes de agregar mensajes
+      const container = document.querySelector('.messages-container')
+      const prevScrollHeight = container?.scrollHeight || 0
+
+      try {
+        const nextPage = currentPagination.page + 1
+        const res = await api.get(`/messages/${activeChat}?page=${nextPage}`)
+        setAllMessages(prev => ({
+          ...prev,
+          [activeChat]: [...res.data.messages, ...(prev[activeChat] || [])]
+        }))
+        setPagination(prev => ({ ...prev, [activeChat]: res.data.pagination }))
+
+        // Restauramos la posición del scroll después de agregar mensajes arriba
+        setTimeout(() => {
+          if (container) {
+            container.scrollTop = container.scrollHeight - prevScrollHeight
+          }
+        }, 50)
+      } catch (err) {
+        console.error('Error cargando más mensajes:', err)
+      } finally {
+        setLoadingMore(false)
+      }
     }
-  }
 
   const sendMessage = (text, type = 'text', extra = {}) => {
     if (type === 'text' && !text.trim()) return
@@ -488,7 +500,8 @@ export default function ChatPanel({ activeChat, contacts, setActiveChat }) {
         </div>
 
         {/* Zona de Mensajes */}
-        <div onClick={() => { setShowEmojis(false); setShowReactions(null) }} className="flex-1 overflow-y-auto px-4 pb-4 flex flex-col gap-2 custom-scrollbar">
+        <div onClick={() => { setShowEmojis(false); setShowReactions(null) }} 
+          className="flex-1 overflow-y-auto px-4 pb-4 flex flex-col gap-2 custom-scrollbar messages-container">
           <div className="flex-1 min-h-[20px]"></div>
           {pagination[activeChat]?.hasMore && (
             <div className="flex justify-center py-2">
