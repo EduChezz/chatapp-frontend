@@ -12,6 +12,7 @@ const REACTIONS = ['❤️','😂','👍','😮','😢','🔥']
 export default function ChatPanel({ activeChat, contacts, setActiveChat }) {
   const { dark } = useTheme()
   const { user } = useAuth()
+  const [forwardingMsg, setForwardingMsg] = useState(null)
   const [pagination, setPagination] = useState({})
   const [loadingMore, setLoadingMore] = useState(false)
   const [isBlocked, setIsBlocked] = useState(false)
@@ -409,6 +410,17 @@ export default function ChatPanel({ activeChat, contacts, setActiveChat }) {
     }
   }
 
+  const handleForward = (conversationId) => {
+    if (!forwardingMsg) return
+    socket.emit('message:forward', {
+      messageId: forwardingMsg.id,
+      toConversationId: conversationId,
+      senderId: user?.id
+    })
+    setForwardingMsg(null)
+    alert('Mensaje reenviado ✓')
+  }
+
   if (!activeChat) return null
 
   return (
@@ -597,6 +609,7 @@ export default function ChatPanel({ activeChat, contacts, setActiveChat }) {
                     {openMenu === msg.id && (
                       <div className="absolute right-0 top-8 bg-white dark:bg-slate-700 shadow-xl rounded-lg py-1 z-50 border border-slate-200 dark:border-slate-600 w-32">
                         <button onClick={() => startEdit(msg)} className="w-full text-left px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-600 bg-transparent border-none text-xs text-slate-700 dark:text-slate-200 cursor-pointer">✏️ Editar</button>
+                        <button onClick={() => { setForwardingMsg(msg); setOpenMenu(null) }} className="w-full text-left px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-600 bg-transparent border-none text-xs text-slate-700 dark:text-slate-200 cursor-pointer">↪️ Reenviar</button>
                         <button onClick={() => deleteMessage(msg.id)} className="w-full text-left px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-600 bg-transparent border-none text-xs text-red-500 cursor-pointer">🗑️ Eliminar</button>
                       </div>
                     )}
@@ -703,6 +716,27 @@ export default function ChatPanel({ activeChat, contacts, setActiveChat }) {
           )}
         </div>
       </div>
+
+      {forwardingMsg && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[1000]" onClick={() => setForwardingMsg(null)}>
+          <div className="bg-white dark:bg-slate-800 w-80 rounded-2xl shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="p-4 bg-blue-600 flex justify-between items-center text-white">
+              <h3 className="m-0 font-semibold text-sm">↪️ Reenviar mensaje a...</h3>
+              <button onClick={() => setForwardingMsg(null)} className="bg-transparent border-none text-white cursor-pointer">✕</button>
+            </div>
+            <div className="p-2 max-h-64 overflow-y-auto">
+              {contacts.filter(c => c.id !== activeChat).map(c => (
+                <div key={c.id} onClick={() => handleForward(c.id)} className="flex items-center gap-3 p-3 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl cursor-pointer">
+                  <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold" style={{ backgroundColor: c.color || '#3b82f6' }}>
+                    {c.name?.substring(0, 2).toUpperCase()}
+                  </div>
+                  <p className="m-0 text-sm font-medium text-slate-800 dark:text-slate-100">{c.name}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
       
       <style>{`
         @keyframes bounce { 0%, 60%, 100% { transform: translateY(0); } 30% { transform: translateY(-4px); } }
