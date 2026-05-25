@@ -4,6 +4,7 @@ import ChatPanel from '../components/ChatPanel'
 import api from '../services/api'
 import { useAuth } from '../context/AuthContext'
 import socket from '../services/socket'
+import { useState, useEffect, useRef } from 'react'
 
 export default function Chat() {
   const { user } = useAuth()
@@ -11,6 +12,7 @@ export default function Chat() {
   const [conversations, setConversations] = useState([])
   const [loading, setLoading] = useState(true)
   const [onlineUsers, setOnlineUsers] = useState([])
+  const hasLoadedRef = useRef(false)
 
   const loadConversations = async () => {
     try {
@@ -18,13 +20,11 @@ export default function Chat() {
       setConversations(res.data)
       // Nos unimos a TODOS los chats en segundo plano
       res.data.forEach(chat => { socket.emit('conversation:join', chat.id) })
-      
-      // 🔥 IMPORTANTE: Ya NO seleccionamos el primer chat automáticamente al inicio.
-      // Esto es clave para que en el celular siempre empieces viendo la lista de chats.
     } catch (err) {
       console.error('Error cargando conversaciones:', err)
     } finally {
       setLoading(false)
+      hasLoadedRef.current = true
     }
   }
 
@@ -65,7 +65,7 @@ export default function Chat() {
 
   useEffect(() => {
   const handleReconnect = async () => {
-    if (!user?.id) return
+    if (!user?.id || !hasLoadedRef.current) return
     socket.emit('user:join', user?.id)
     try {
       const res = await api.get('/conversations')
