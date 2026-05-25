@@ -12,6 +12,8 @@ const REACTIONS = ['❤️','😂','👍','😮','😢','🔥']
 export default function ChatPanel({ activeChat, contacts, setActiveChat }) {
   const { dark } = useTheme()
   const { user } = useAuth()
+  const [pagination, setPagination] = useState({})
+  const [loadingMore, setLoadingMore] = useState(false)
   const [isBlocked, setIsBlocked] = useState(false)
   const [allMessages, setAllMessages] = useState({})
   const [input, setInput] = useState('')
@@ -59,8 +61,9 @@ export default function ChatPanel({ activeChat, contacts, setActiveChat }) {
   useEffect(() => {
     if (!activeChat) return
     setIsTyping(false) 
-    api.get(`/messages/${activeChat}`).then(res => {
-      setAllMessages(prev => ({ ...prev, [activeChat]: res.data }))
+    api.get(`/messages/${activeChat}?page=1`).then(res => {
+      setAllMessages(prev => ({ ...prev, [activeChat]: res.data.messages }))
+      setPagination(prev => ({ ...prev, [activeChat]: res.data.pagination }))
       socket.emit('conversation:join', activeChat)
       markAsRead()
     }).catch(err => console.error("Error al cargar mensajes:", err))
@@ -218,6 +221,26 @@ export default function ChatPanel({ activeChat, contacts, setActiveChat }) {
       .catch(() => {})
     return () => { cancelled = true }
   }, [contact?.other_user_id])
+
+    const loadMoreMessages = async () => {
+    if (loadingMore) return
+    const currentPagination = pagination[activeChat]
+    if (!currentPagination?.hasMore) return
+    setLoadingMore(true)
+    try {
+      const nextPage = currentPagination.page + 1
+      const res = await api.get(`/messages/${activeChat}?page=${nextPage}`)
+      setAllMessages(prev => ({
+        ...prev,
+        [activeChat]: [...res.data.messages, ...(prev[activeChat] || [])]
+      }))
+      setPagination(prev => ({ ...prev, [activeChat]: res.data.pagination }))
+    } catch (err) {
+      console.error('Error cargando más mensajes:', err)
+    } finally {
+      setLoadingMore(false)
+    }
+  }
 
   const sendMessage = (text, type = 'text', extra = {}) => {
     if (type === 'text' && !text.trim()) return
@@ -467,6 +490,17 @@ export default function ChatPanel({ activeChat, contacts, setActiveChat }) {
         {/* Zona de Mensajes */}
         <div onClick={() => { setShowEmojis(false); setShowReactions(null) }} className="flex-1 overflow-y-auto px-4 pb-4 flex flex-col gap-2 custom-scrollbar">
           <div className="flex-1 min-h-[20px]"></div>
+          {pagination[activeChat]?.hasMore && (
+            <div className="flex justify-center py-2">
+              <button
+                onClick={loadMoreMessages}
+                disabled={loadingMore}
+                className="px-4 py-1.5 text-xs bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-full hover:bg-slate-300 dark:hover:bg-slate-600 disabled:opacity-50 cursor-pointer border-none"
+              >
+                {loadingMore ? 'Cargando...' : '⬆ Cargar mensajes anteriores'}
+              </button>
+            </div>
+          )}
           {messages.map((msg) => (
             <div key={msg.id} className={`flex ${msg.sent ? 'justify-end' : 'justify-start'}`} onMouseEnter={() => setHoveredMsg(msg.id)} onMouseLeave={() => { setHoveredMsg(null); setShowReactions(null) }}>
               <div className="relative max-w-[85%] sm:max-w-[65%]">
