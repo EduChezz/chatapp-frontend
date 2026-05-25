@@ -12,6 +12,7 @@ const REACTIONS = ['❤️','😂','👍','😮','😢','🔥']
 export default function ChatPanel({ activeChat, contacts, setActiveChat }) {
   const { dark } = useTheme()
   const { user } = useAuth()
+  const [isOnline, setIsOnline] = useState(true)
   const [forwardingMsg, setForwardingMsg] = useState(null)
   const [pagination, setPagination] = useState({})
   const [loadingMore, setLoadingMore] = useState(false)
@@ -662,6 +663,12 @@ export default function ChatPanel({ activeChat, contacts, setActiveChat }) {
         {showEmojis && (
           <div className="bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 px-4 py-2 flex flex-wrap gap-2">
             {EMOJIS.map(e => <button key={e} onClick={() => setInput(prev => prev + e)} className="bg-transparent border-none text-[20px] cursor-pointer p-1 hover:scale-110 transition-transform">{e}</button>)}
+          </div>
+        )}
+
+        {!isOnline && (
+          <div className="px-4 py-2 bg-yellow-50 dark:bg-yellow-900/20 border-t border-yellow-200 dark:border-yellow-800 text-center text-xs text-yellow-600 dark:text-yellow-400 font-medium">
+            ⚠️ Sin conexión — reconectando...
           </div>
         )}
 
