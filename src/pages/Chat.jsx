@@ -62,6 +62,15 @@ export default function Chat() {
   socket.on('users:online', (users) => setOnlineUsers(users))
   return () => socket.off('users:online')
 }, [])
+
+  useEffect(() => {
+    const handleReconnect = () => {
+      socket.emit('user:join', user?.id)
+      loadConversations()
+    }
+    socket.on('connect', handleReconnect)
+    return () => socket.off('connect', handleReconnect)
+  }, [user])
   
   useEffect(() => {
     if (activeChat) {
