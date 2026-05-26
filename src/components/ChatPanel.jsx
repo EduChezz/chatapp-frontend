@@ -12,6 +12,7 @@ const REACTIONS = ['❤️','😂','👍','😮','😢','🔥']
 export default function ChatPanel({ activeChat, contacts, setActiveChat }) {
   const { dark } = useTheme()
   const { user } = useAuth()
+  const [messageQueue, setMessageQueue] = useState([])
   const [isOnline, setIsOnline] = useState(true)
   const [forwardingMsg, setForwardingMsg] = useState(null)
   const [pagination, setPagination] = useState({})
@@ -237,6 +238,11 @@ export default function ChatPanel({ activeChat, contacts, setActiveChat }) {
     const handleOnline = () => {
       setIsOnline(true)
       socket.connect()
+      // Envía mensajes en cola
+      setMessageQueue(prev => {
+        prev.forEach(msg => socket.emit('message:send', msg))
+        return []
+      })
     }
     const handleOffline = () => setIsOnline(false)
 
@@ -288,10 +294,17 @@ export default function ChatPanel({ activeChat, contacts, setActiveChat }) {
 
   const sendMessage = (text, type = 'text', extra = {}) => {
     if (type === 'text' && !text.trim()) return
-    socket.emit('message:send', {
+    const msgData = {
       conversationId: activeChat, senderId: user?.id, content: text,
       type, fileName: extra.fileName || null, fileSize: extra.fileSize || null,
-    })
+    }
+    if (!isOnline) {
+      setMessageQueue(prev => [...prev, msgData])
+      setInput('')
+      setShowEmojis(false)
+      return
+    }
+    socket.emit('message:send', msgData)
     setInput('')
     setShowEmojis(false)
     socket.emit('typing:stop', { conversationId: activeChat })
@@ -757,6 +770,7 @@ export default function ChatPanel({ activeChat, contacts, setActiveChat }) {
         {!isOnline && (
           <div className="px-4 py-2 bg-yellow-50 dark:bg-yellow-900/20 border-t border-yellow-200 dark:border-yellow-800 text-center text-xs text-yellow-600 dark:text-yellow-400 font-medium">
             ⚠️ Sin conexión — reconectando...
+            {messageQueue.length > 0 && ` (${messageQueue.length} mensaje${messageQueue.length > 1 ? 's' : ''} en cola)`}
           </div>
         )}
 
