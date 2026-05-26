@@ -523,8 +523,26 @@ export default function ChatPanel({ activeChat, contacts, setActiveChat }) {
             <button onClick={() => setActiveChat(null)} className="md:hidden p-1 mr-1 bg-transparent border-none text-slate-600 dark:text-slate-300 text-2xl cursor-pointer hover:scale-110 transition-transform leading-none">←</button>
             <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-[13px] font-medium shadow-sm shrink-0" style={{ backgroundColor: contact?.color || '#3b82f6' }}>{contact?.name?.substring(0, 2).toUpperCase() || '?'}</div>
             <div className="overflow-hidden">
-              <p className="m-0 font-medium text-sm text-slate-800 dark:text-slate-100 whitespace-nowrap overflow-hidden text-ellipsis">{contact?.name || 'Chat'}{contact?.is_group && <span className="ml-1.5 text-xs text-purple-600 font-bold">👥 Grupo</span>}</p>
-              <p className={`m-0 text-xs ${isTyping ? 'text-blue-500 font-medium' : 'text-slate-500'}`}>{isTyping ? '✏️ escribiendo...' : (contact?.status || 'en línea')}</p>
+              <p className="m-0 font-medium text-sm text-slate-800 dark:text-slate-100 whitespace-nowrap overflow-hidden text-ellipsis">
+                {contact?.name || 'Chat'}{contact?.is_group && <span className="ml-1.5 text-xs text-purple-600 font-bold">👥 Grupo</span>}</p>
+              <p className={`m-0 text-xs ${isTyping ? 'text-blue-500 font-medium' : 'text-slate-500'}`}>
+                {isTyping ? '✏️ escribiendo...' : (
+                  <span className="flex items-center gap-1 flex-wrap">
+                    {contact?.status && (
+                      <span className={`font-medium ${
+                        contact.status === 'ocupado' ? 'text-yellow-500' :
+                        contact.status === 'ausente' ? 'text-orange-500' :
+                        contact.status === 'no molestar' ? 'text-red-500' :
+                        'text-green-500'
+                      }`}>
+                        ● {contact.status}
+                      </span>
+                    )}
+                    {contact?.bio && contact?.status && <span className="text-slate-400">·</span>}
+                    {contact?.bio && <span className="text-slate-400 italic truncate max-w-[150px]">{contact.bio}</span>}
+                  </span>
+                )}
+</p>
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
