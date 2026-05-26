@@ -105,7 +105,14 @@ export default function ChatPanel({ activeChat, contacts, setActiveChat }) {
       } else if (!isMine) {
         playNotificationSound()
         const senderChat = contacts.find(c => c.id === msg.conversation_id)
-        showDesktopNotification(senderChat?.name || 'Nuevo mensaje', msg.content)
+        const notifText = 
+          msg.type === 'image' ? '📷 Imagen' :
+          msg.type === 'audio' ? '🎵 Audio' :
+          msg.type === 'file' ? `📎 ${msg.file_name || 'Archivo'}` :
+          msg.type === 'deleted' ? '🚫 Mensaje eliminado' :
+          msg.content
+
+        showDesktopNotification(senderChat?.name || 'Nuevo mensaje', notifText)
       }
     }
 

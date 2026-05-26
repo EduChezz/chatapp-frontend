@@ -45,6 +45,8 @@ export default function Chat() {
             let previewText = msg.content
             if (msg.type === 'image') previewText = '📷 Imagen'
             if (msg.type === 'file') previewText = '📎 Archivo'
+            if (msg.type === 'file') previewText = '📎 Archivo'
+            if (msg.type === 'deleted') previewText = '🚫 Mensaje eliminado'
 
             return { ...c, last_message: previewText, last_message_time: msg.created_at, unread_count: newUnreadCount }
           }
