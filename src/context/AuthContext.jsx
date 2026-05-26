@@ -47,6 +47,15 @@ export function AuthProvider({ children }) {
     const updated = { ...user, ...res.data }
     localStorage.setItem('user', JSON.stringify(updated))
     setUser(updated)
+    // Notifica a todos en tiempo real
+    socket.emit('profile:update', { 
+      userId: user.id, 
+      status: updated.status, 
+      bio: updated.bio, 
+      avatar_url: updated.avatar_url,
+      avatar_color: updated.avatar_color,
+      name: updated.name
+    })
     return updated
   }
 

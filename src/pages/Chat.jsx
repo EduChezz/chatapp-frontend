@@ -63,6 +63,18 @@ export default function Chat() {
 }, [])
 
   useEffect(() => {
+    const handleProfileUpdated = ({ userId, status, bio, avatar_url, avatar_color, name }) => {
+      setConversations(prev => prev.map(c => 
+        c.other_user_id === userId 
+          ? { ...c, status, bio, avatar_url, color: avatar_color, name: name || c.name }
+          : c
+      ))
+    }
+    socket.on('profile:updated', handleProfileUpdated)
+    return () => socket.off('profile:updated', handleProfileUpdated)
+}, [])
+
+  useEffect(() => {
   const handleReconnect = async () => {
     if (!user?.id || !hasLoadedRef.current) return
     socket.emit('user:join', user?.id)
