@@ -1,4 +1,3 @@
-import { useState, useEffect } from 'react'
 import Sidebar from '../components/Sidebar'
 import ChatPanel from '../components/ChatPanel'
 import api from '../services/api'
