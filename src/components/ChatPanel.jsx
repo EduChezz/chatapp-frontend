@@ -521,7 +521,12 @@ export default function ChatPanel({ activeChat, contacts, setActiveChat }) {
         <div className="px-4 py-3 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between transition-colors">
           <div className="flex items-center gap-3">
             <button onClick={() => setActiveChat(null)} className="md:hidden p-1 mr-1 bg-transparent border-none text-slate-600 dark:text-slate-300 text-2xl cursor-pointer hover:scale-110 transition-transform leading-none">←</button>
-            <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-[13px] font-medium shadow-sm shrink-0" style={{ backgroundColor: contact?.color || '#3b82f6' }}>{contact?.name?.substring(0, 2).toUpperCase() || '?'}</div>
+            <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-[13px] font-medium shadow-sm shrink-0 overflow-hidden" style={{ backgroundColor: contact?.color || '#3b82f6' }}>
+              {contact?.avatar_url
+                ? <img src={contact.avatar_url} alt="avatar" className="w-full h-full object-cover" />
+                : contact?.name?.substring(0, 2).toUpperCase() || '?'
+              }
+            </div>
             <div className="overflow-hidden">
               <p className="m-0 font-medium text-sm text-slate-800 dark:text-slate-100 whitespace-nowrap overflow-hidden text-ellipsis">
                 {contact?.name || 'Chat'}{contact?.is_group && <span className="ml-1.5 text-xs text-purple-600 font-bold">👥 Grupo</span>}</p>
