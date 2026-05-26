@@ -32,6 +32,8 @@ export default function ChatPanel({ activeChat, contacts, setActiveChat }) {
 
   // Estados del Grupo
   const [showGroupMembers, setShowGroupMembers] = useState(false)
+  const [groupPhotoUploading, setGroupPhotoUploading] = useState(false)
+  const groupPhotoRef = useRef()
   const [groupMembers, setGroupMembers] = useState([])
   const [isAddingMember, setIsAddingMember] = useState(false)
   const [memberSearch, setMemberSearch] = useState('')
@@ -454,9 +456,44 @@ export default function ChatPanel({ activeChat, contacts, setActiveChat }) {
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[1000]" onClick={() => setShowGroupMembers(false)}>
           <div className="bg-white dark:bg-slate-800 w-80 rounded-2xl shadow-2xl overflow-hidden flex flex-col" style={{ animation: 'slideUp 0.2s ease', maxHeight: '80vh' }} onClick={e => e.stopPropagation()}>
             <div className="p-4 bg-purple-600 flex justify-between items-center text-white">
-              <h3 className="m-0 font-semibold text-sm">Integrantes</h3>
+              <div className="flex items-center gap-2">
+                <div className="relative cursor-pointer" onClick={() => {
+                  if (groupMembers.find(m => m.id === user?.id)?.role === 'admin') groupPhotoRef.current.click()
+                }}>
+                  <div className="w-10 h-10 rounded-full overflow-hidden flex items-center justify-center bg-purple-400 text-white font-bold text-sm">
+                    {contact?.avatar_url
+                      ? <img src={contact.avatar_url} alt="grupo" className="w-full h-full object-cover" />
+                      : contact?.name?.substring(0, 2).toUpperCase()
+                    }
+                  </div>
+                  {groupMembers.find(m => m.id === user?.id)?.role === 'admin' && (
+                    <div className="absolute bottom-0 right-0 bg-white rounded-full w-4 h-4 flex items-center justify-center text-purple-600 text-[10px]">📷</div>
+                  )}
+                </div>
+                <h3 className="m-0 font-semibold text-sm">{contact?.name}</h3>
+              </div>
               <button onClick={() => setShowGroupMembers(false)} className="bg-transparent border-none text-white cursor-pointer hover:scale-110 transition-transform">✕</button>
             </div>
+            <input ref={groupPhotoRef} type="file" accept="image/*" className="hidden" onChange={async (e) => {
+              const file = e.target.files[0]
+              if (!file) return
+              setGroupPhotoUploading(true)
+              try {
+                const formData = new FormData()
+                formData.append('file', file)
+                const uploadRes = await api.post('/upload', formData)
+                await api.put(`/conversations/${activeChat}/avatar`, { avatar_url: uploadRes.data.url })
+                // Actualiza el contact en la lista
+                const updatedContacts = contacts.map(c => c.id === activeChat ? { ...c, avatar_url: uploadRes.data.url } : c)
+                // Recarga para ver el cambio
+                window.location.reload()
+              } catch (err) {
+                console.error('Error subiendo foto del grupo:', err)
+              } finally {
+                setGroupPhotoUploading(false)
+                e.target.value = ''
+              }
+            }} />
             
             <div className="p-3 bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700">
               {!isAddingMember ? (
