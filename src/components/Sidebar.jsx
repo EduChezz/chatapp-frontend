@@ -227,12 +227,14 @@ export default function Sidebar({ activeChat, setActiveChat, contacts, setContac
                 onClick={() => setActiveChat(chat.id)}
                 className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer mb-1 transition-colors duration-200 ${activeChat === chat.id ? 'bg-blue-500' : 'hover:bg-slate-700 dark:hover:bg-slate-800'}`}
               >
-                <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold relative shrink-0 overflow-hidden" style={{ backgroundColor: chat.color || '#3b82f6' }}>
-                  {chat.avatar_url
-                    ? <img src={chat.avatar_url} alt="avatar" className="w-full h-full object-cover" />
-                    : chat.name?.substring(0, 2).toUpperCase()
-                  }
-                  {chat.is_group && <span className="absolute -bottom-1 -right-1 text-xs drop-shadow-md">👥</span>}
+                <div className="relative shrink-0">
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold overflow-hidden" style={{ backgroundColor: chat.color || '#3b82f6' }}>
+                    {chat.avatar_url
+                      ? <img src={chat.avatar_url} alt="avatar" className="w-full h-full object-cover" />
+                      : chat.name?.substring(0, 2).toUpperCase()
+                    }
+                    {chat.is_group && <span className="absolute -bottom-1 -right-1 text-xs drop-shadow-md">👥</span>}
+                  </div>
                   {!chat.is_group && (
                     <span className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-slate-800 ${onlineUsers.includes(chat.other_user_id) ? 'bg-green-400' : 'bg-slate-500'}`} />
                   )}
