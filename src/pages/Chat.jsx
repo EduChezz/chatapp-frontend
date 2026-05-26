@@ -44,7 +44,7 @@ export default function Chat() {
 
             let previewText = msg.content
             if (msg.type === 'image') previewText = '📷 Imagen'
-            if (msg.type === 'file') previewText = '📎 Archivo'
+            if (msg.type === 'audio') previewText = '🎵 Audio'
             if (msg.type === 'file') previewText = '📎 Archivo'
             if (msg.type === 'deleted') previewText = '🚫 Mensaje eliminado'
 
@@ -68,7 +68,7 @@ export default function Chat() {
     const handleProfileUpdated = ({ userId, status, bio, avatar_url, avatar_color, name }) => {
       setConversations(prev => prev.map(c => 
         c.other_user_id === userId 
-          ? { ...c, status, bio, avatar_url, color: avatar_color, name: name || c.name }
+          ? { ...c, status, bio, avatar_url, color: avatar_color }
           : c
       ))
     }
