@@ -125,50 +125,52 @@ export default function Chat() {
 
   if (loading) return <div className="h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900 text-sm text-slate-500 dark:text-slate-400">Cargando...</div>
 
-  {activeCall && (
-    <VideoCall
-      call={activeCall}
-      user={user}
-      onEnd={() => setActiveCall(null)}
-    />
-  )}
-
   return (
-    <div className="flex h-screen bg-slate-50 dark:bg-slate-900 transition-colors duration-300 overflow-hidden">
-      
-      {/* 🔥 MAGIA RESPONSIVE: Sidebar */}
-      {/* Si hay un chat activo, se oculta en celular ('hidden'). Si no hay chat, ocupa el 100% ('w-full'). En PC siempre mide 320px ('md:w-80') */}
-      <div className={`${activeChat ? 'hidden md:flex md:w-80' : 'flex w-full md:w-80'} h-full border-r border-slate-200 dark:border-slate-800 shrink-0`}>
-        <Sidebar
-          activeChat={activeChat}
-          setActiveChat={setActiveChat}
-          contacts={conversations}
-          setContacts={setConversations}
-          onConversationCreated={loadConversations}
-          onDeleteChat={handleDeleteChat} 
-          onlineUsers={onlineUsers}
+    <>
+      {activeCall && (
+        <VideoCall
+          call={activeCall}
+          user={user}
+          onEnd={() => setActiveCall(null)}
         />
-      </div>
+      )}
 
-      {/* 🔥 MAGIA RESPONSIVE: ChatPanel */}
-      {/* Si NO hay chat activo, se oculta en celular. Si lo hay, se muestra. En PC siempre se muestra. */}
-      <div className={`flex-1 ${!activeChat ? 'hidden md:flex' : 'flex'} h-full min-w-0`}>
-        {activeChat
-          // Pasamos setActiveChat como propiedad (prop) para poder usar el botón de "Atrás" después
-          ? <ChatPanel 
-              activeChat={activeChat} 
-              contacts={conversations} 
-              setActiveChat={setActiveChat}
-              onStartCall={(callData) => setActiveCall(callData)}
-            />
-          : (
-            <div className="flex-1 flex flex-col items-center justify-center gap-3 text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-slate-900">
-              <span className="text-5xl">💬</span>
-              <p className="m-0 text-[15px]">Selecciona una conversación</p>
-            </div>
-          )
-        }
+      <div className="flex h-screen bg-slate-50 dark:bg-slate-900 transition-colors duration-300 overflow-hidden">
+        
+        {/* 🔥 MAGIA RESPONSIVE: Sidebar */}
+        {/* Si hay un chat activo, se oculta en celular ('hidden'). Si no hay chat, ocupa el 100% ('w-full'). En PC siempre mide 320px ('md:w-80') */}
+        <div className={`${activeChat ? 'hidden md:flex md:w-80' : 'flex w-full md:w-80'} h-full border-r border-slate-200 dark:border-slate-800 shrink-0`}>
+          <Sidebar
+            activeChat={activeChat}
+            setActiveChat={setActiveChat}
+            contacts={conversations}
+            setContacts={setConversations}
+            onConversationCreated={loadConversations}
+            onDeleteChat={handleDeleteChat} 
+            onlineUsers={onlineUsers}
+          />
+        </div>
+
+        {/* 🔥 MAGIA RESPONSIVE: ChatPanel */}
+        {/* Si NO hay chat activo, se oculta en celular. Si lo hay, se muestra. En PC siempre se muestra. */}
+        <div className={`flex-1 ${!activeChat ? 'hidden md:flex' : 'flex'} h-full min-w-0`}>
+          {activeChat
+            // Pasamos setActiveChat como propiedad (prop) para poder usar el botón de "Atrás" después
+            ? <ChatPanel 
+                activeChat={activeChat} 
+                contacts={conversations} 
+                setActiveChat={setActiveChat}
+                onStartCall={(callData) => setActiveCall(callData)}
+              />
+            : (
+              <div className="flex-1 flex flex-col items-center justify-center gap-3 text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-slate-900">
+                <span className="text-5xl">💬</span>
+                <p className="m-0 text-[15px]">Selecciona una conversación</p>
+              </div>
+            )
+          }
+        </div>
       </div>
-    </div>
-  )
-}
+    </>
+   )      
+ }
