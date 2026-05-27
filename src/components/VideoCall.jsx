@@ -10,15 +10,13 @@ const FILTERS = [
   { id: 'blur', label: 'Suave', css: 'blur(1.5px)' },
 ]
 
-const ICE_SERVERS = {
-  iceServers: [
-    { urls: 'stun:stun.l.google.com:19302' },
-    { urls: 'stun:stun1.l.google.com:19302' },
-    { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
-    { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
-    { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' }
-  ]
-}
+const [iceServers, setIceServers] = useState([{ urls: 'stun:stun.l.google.com:19302' }])
+
+useEffect(() => {
+  api.get('/turn-credentials')
+    .then(res => setIceServers(res.data))
+    .catch(() => {})
+}, [])
 
 export default function VideoCall({ call, user, onEnd }) {
   const { contact, callType: initialCallType, isIncoming, remoteUserId } = call
@@ -96,7 +94,7 @@ export default function VideoCall({ call, user, onEnd }) {
   const startOutgoingCall = async (ct) => {
     const stream = await getLocalStream(ct === 'video')
     if (!stream) return
-    const pc = createPC(stream)
+    const pc = new RTCPeerConnection({ iceServers })
     const offer = await pc.createOffer()
     await pc.setLocalDescription(offer)
     socket.emit('webrtc:offer', { toUserId: remoteUserId, offer })
