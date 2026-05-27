@@ -15,6 +15,7 @@ const STUN = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 's
 export default function VideoCall({ call, user, onEnd }) {
   const { contact, callType: initialCallType, isIncoming, remoteUserId } = call
 
+  const ringtoneRef = useRef(null)
   const localVideoRef = useRef()
   const remoteVideoRef = useRef()
   const pcRef = useRef()
@@ -28,6 +29,19 @@ export default function VideoCall({ call, user, onEnd }) {
   const [activeFilter, setActiveFilter] = useState('none')
   const [callDuration, setCallDuration] = useState(0)
   const [upgradeRequested, setUpgradeRequested] = useState(false)
+
+  useEffect(() => {
+    if (status === 'incoming') {
+      const audio = new Audio('/ringtone.mp3')
+      audio.loop = true
+      audio.play().catch(() => {})
+      ringtoneRef.current = audio
+    }
+    return () => {
+      ringtoneRef.current?.pause()
+      ringtoneRef.current = null
+    }
+  }, [status])
 
   // Timer de duración
   useEffect(() => {
@@ -84,6 +98,8 @@ export default function VideoCall({ call, user, onEnd }) {
 
   // Aceptar llamada entrante
   const acceptCall = async () => {
+    ringtoneRef.current?.pause()
+    ringtoneRef.current = null
     setStatus('active')
     const stream = await getLocalStream(callType === 'video')
     if (!stream) return
@@ -93,6 +109,8 @@ export default function VideoCall({ call, user, onEnd }) {
 
   // Rechazar llamada
   const rejectCall = () => {
+    ringtoneRef.current?.pause()
+    ringtoneRef.current
     socket.emit('call:reject', { toUserId: remoteUserId })
     onEnd()
   }
