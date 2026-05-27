@@ -211,12 +211,23 @@ export default function VideoCall({ call, user, onEnd }) {
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 1000, background: isVideo && isActive ? '#000' : '#1e293b', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
 
-      {/* Videos — siempre en el DOM, visibles solo en videollamada activa */}
+      {/* Video remoto */}
       <video ref={remoteVideoRef} autoPlay playsInline
-        style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', display: isVideo && isActive ? 'block' : 'none' }} />
-      <video ref={localVideoRef} autoPlay playsInline muted
-        style={{ position: 'absolute', bottom: 100, right: 16, width: 100, height: 140, objectFit: 'cover', borderRadius: 12, border: '2px solid white', display: isVideo && isActive ? 'block' : 'none' }} />
+        style={{ 
+          position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover',
+          visibility: isVideo && isActive ? 'visible' : 'hidden',
+          opacity: isVideo && isActive ? 1 : 0
+        }} />
 
+      {/* Video local */}
+      <video ref={localVideoRef} autoPlay playsInline muted
+        style={{ 
+          position: 'absolute', bottom: 100, right: 16,
+          width: 100, height: 140, objectFit: 'cover',
+          borderRadius: 12, border: '2px solid white',
+          visibility: isVideo && isActive ? 'visible' : 'hidden',
+          opacity: isVideo && isActive ? 1 : 0
+        }} />
       {/* Pantalla de llamada entrante */}
       {status === 'incoming' && (
         <div style={{ textAlign: 'center', color: 'white' }}>
