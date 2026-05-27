@@ -20,6 +20,7 @@ export default function VideoCall({ call, user, onEnd }) {
   const remoteVideoRef = useRef()
   const pcRef = useRef()
   const localStreamRef = useRef()
+  const pendingCandidatesRef = useRef([])
 
   const [callType, setCallType] = useState(initialCallType)
   const [status, setStatus] = useState(isIncoming ? 'incoming' : 'calling')
@@ -43,7 +44,6 @@ export default function VideoCall({ call, user, onEnd }) {
     }
   }, [status])
 
-  // Timer de duración
   useEffect(() => {
     if (status !== 'active') return
     const interval = setInterval(() => setCallDuration(d => d + 1), 1000)
@@ -52,7 +52,6 @@ export default function VideoCall({ call, user, onEnd }) {
 
   const formatTime = (s) => `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`
 
-  // Obtener stream local
   const getLocalStream = async (video = false) => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video })
@@ -61,19 +60,22 @@ export default function VideoCall({ call, user, onEnd }) {
       return stream
     } catch (err) {
       console.error('Error accediendo a medios:', err)
+      alert('No se puede acceder al micrófono/cámara. Verifica los permisos.')
       return null
     }
   }
 
-  // Crear PeerConnection
   const createPC = (stream) => {
+    if (pcRef.current) pcRef.current.close()
     const pc = new RTCPeerConnection(STUN)
     pcRef.current = pc
 
     stream.getTracks().forEach(track => pc.addTrack(track, stream))
 
     pc.ontrack = (e) => {
-      if (remoteVideoRef.current) remoteVideoRef.current.srcObject = e.streams[0]
+      if (remoteVideoRef.current && e.streams[0]) {
+        remoteVideoRef.current.srcObject = e.streams[0]
+      }
     }
 
     pc.onicecandidate = (e) => {
@@ -82,12 +84,16 @@ export default function VideoCall({ call, user, onEnd }) {
       }
     }
 
+    pc.onconnectionstatechange = () => {
+      console.log('WebRTC state:', pc.connectionState)
+    }
+
     return pc
   }
 
-  // Iniciar llamada saliente
-  const startCall = async () => {
-    const stream = await getLocalStream(callType === 'video')
+  // Llamada saliente: obtener stream + crear PC + enviar offer
+  const startOutgoingCall = async (ct) => {
+    const stream = await getLocalStream(ct === 'video')
     if (!stream) return
     const pc = createPC(stream)
     const offer = await pc.createOffer()
@@ -96,21 +102,21 @@ export default function VideoCall({ call, user, onEnd }) {
     setStatus('active')
   }
 
-  // Aceptar llamada entrante
+  // Llamada entrante: obtener stream + crear PC (espera el offer)
   const acceptCall = async () => {
     ringtoneRef.current?.pause()
     ringtoneRef.current = null
-    setStatus('active')
     const stream = await getLocalStream(callType === 'video')
     if (!stream) return
     createPC(stream)
+    setStatus('active')
     socket.emit('call:accept', { toUserId: remoteUserId, callType })
   }
 
   // Rechazar llamada
   const rejectCall = () => {
     ringtoneRef.current?.pause()
-    ringtoneRef.current
+    ringtoneRef.current = null
     socket.emit('call:reject', { toUserId: remoteUserId })
     onEnd()
   }
@@ -126,6 +132,7 @@ export default function VideoCall({ call, user, onEnd }) {
   const cleanup = () => {
     localStreamRef.current?.getTracks().forEach(t => t.stop())
     pcRef.current?.close()
+    pcRef.current = null
   }
 
   // Silenciar
@@ -159,42 +166,49 @@ export default function VideoCall({ call, user, onEnd }) {
     if (localVideoRef.current) localVideoRef.current.style.filter = filter.css
   }
 
-  // Eventos Socket
+  // Eventos Socket — señalización WebRTC
   useEffect(() => {
-    // Cuando aceptan nuestra llamada
+    // Llamada saliente: el otro aceptó → iniciamos WebRTC
     socket.on('call:accepted', async ({ callType: ct }) => {
       setCallType(ct)
-      await startCall()
+      await startOutgoingCall(ct)
     })
 
-    // Cuando recibimos offer WebRTC
+    // Recibimos offer (el que llama nos envía su descripción)
     socket.on('webrtc:offer', async ({ offer }) => {
       if (!pcRef.current) return
       await pcRef.current.setRemoteDescription(new RTCSessionDescription(offer))
+      // Aplicar candidatos ICE pendientes
+      for (const c of pendingCandidatesRef.current) {
+        await pcRef.current.addIceCandidate(new RTCIceCandidate(c)).catch(() => {})
+      }
+      pendingCandidatesRef.current = []
       const answer = await pcRef.current.createAnswer()
       await pcRef.current.setLocalDescription(answer)
       socket.emit('webrtc:answer', { toUserId: remoteUserId, answer })
     })
 
-    // Cuando recibimos answer WebRTC
+    // Recibimos answer (el que recibe confirma)
     socket.on('webrtc:answer', async ({ answer }) => {
       await pcRef.current?.setRemoteDescription(new RTCSessionDescription(answer))
+      // Aplicar candidatos ICE pendientes
+      for (const c of pendingCandidatesRef.current) {
+        await pcRef.current.addIceCandidate(new RTCIceCandidate(c)).catch(() => {})
+      }
+      pendingCandidatesRef.current = []
     })
 
-    // Cuando recibimos candidato ICE
+    // Candidatos ICE — guardamos si aún no hay remoteDescription
     socket.on('webrtc:ice', async ({ candidate }) => {
-      try {
-        await pcRef.current?.addIceCandidate(new RTCIceCandidate(candidate))
-      } catch (e) {}
+      if (pcRef.current?.remoteDescription) {
+        await pcRef.current.addIceCandidate(new RTCIceCandidate(candidate)).catch(() => {})
+      } else {
+        pendingCandidatesRef.current.push(candidate)
+      }
     })
 
-    // Cuando cuelgan
     socket.on('call:ended', () => { cleanup(); onEnd() })
-
-    // Cuando rechazan
     socket.on('call:rejected', () => { cleanup(); onEnd() })
-
-    // Cuando piden subir a video
     socket.on('call:upgrade', () => setUpgradeRequested(true))
 
     return () => {
@@ -208,7 +222,7 @@ export default function VideoCall({ call, user, onEnd }) {
     }
   }, [remoteUserId])
 
-  // Si es llamada saliente, emitir call:start
+  // Llamada saliente: avisar al otro usuario
   useEffect(() => {
     if (!isIncoming) {
       socket.emit('call:start', {
@@ -247,11 +261,9 @@ export default function VideoCall({ call, user, onEnd }) {
             position: 'absolute', bottom: 100, right: 16,
             width: 100, height: 140, objectFit: 'cover',
             borderRadius: 12, border: '2px solid white',
-            filter: FILTERS.find(f => f.id === activeFilter)?.css || 'none'
           }} />
       )}
 
-      {/* PANTALLA DE LLAMADA ENTRANTE */}
       {status === 'incoming' && (
         <div style={{ textAlign: 'center', color: 'white' }}>
           <p style={{ fontSize: 14, opacity: 0.7, marginBottom: 16 }}>
@@ -269,7 +281,6 @@ export default function VideoCall({ call, user, onEnd }) {
         </div>
       )}
 
-      {/* PANTALLA LLAMANDO */}
       {status === 'calling' && (
         <div style={{ textAlign: 'center', color: 'white' }}>
           <div style={{ width: 80, height: 80, borderRadius: '50%', background: avatarBg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, fontWeight: 600, color: 'white', margin: '0 auto 16px', overflow: 'hidden' }}>
@@ -281,10 +292,8 @@ export default function VideoCall({ call, user, onEnd }) {
         </div>
       )}
 
-      {/* PANTALLA ACTIVA */}
       {status === 'active' && (
         <>
-          {/* Info arriba */}
           {callType !== 'video' && (
             <div style={{ textAlign: 'center', color: 'white', marginBottom: 40 }}>
               <div style={{ width: 80, height: 80, borderRadius: '50%', background: avatarBg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, fontWeight: 600, color: 'white', margin: '0 auto 16px', overflow: 'hidden' }}>
@@ -295,14 +304,12 @@ export default function VideoCall({ call, user, onEnd }) {
             </div>
           )}
 
-          {/* Timer en videollamada */}
           {callType === 'video' && (
             <div style={{ position: 'absolute', top: 16, left: 16, color: 'white', fontSize: 14, background: 'rgba(0,0,0,0.5)', padding: '4px 12px', borderRadius: 20 }}>
               {formatTime(callDuration)}
             </div>
           )}
 
-          {/* Solicitud de upgrade */}
           {upgradeRequested && callType === 'audio' && (
             <div style={{ background: 'rgba(255,255,255,0.1)', borderRadius: 12, padding: '12px 20px', marginBottom: 20, textAlign: 'center', color: 'white' }}>
               <p style={{ fontSize: 13, marginBottom: 8 }}>{contact?.name} quiere activar el video</p>
@@ -313,7 +320,6 @@ export default function VideoCall({ call, user, onEnd }) {
             </div>
           )}
 
-          {/* Panel de filtros */}
           {showFilters && callType === 'video' && (
             <div style={{ position: 'absolute', bottom: 160, display: 'flex', gap: 8, background: 'rgba(0,0,0,0.6)', padding: '8px 12px', borderRadius: 12 }}>
               {FILTERS.map(f => (
@@ -326,7 +332,6 @@ export default function VideoCall({ call, user, onEnd }) {
             </div>
           )}
 
-          {/* Botones de control */}
           <div style={{ position: 'absolute', bottom: 40, display: 'flex', gap: 16, alignItems: 'center' }}>
             <button onClick={toggleMute} style={{ width: 52, height: 52, borderRadius: '50%', background: isMuted ? '#ef4444' : 'rgba(255,255,255,0.2)', border: 'none', fontSize: 20, cursor: 'pointer' }}>
               {isMuted ? '🔇' : '🎤'}
