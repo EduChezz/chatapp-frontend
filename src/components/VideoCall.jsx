@@ -56,7 +56,12 @@ export default function VideoCall({ call, user, onEnd }) {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video })
       localStreamRef.current = stream
-      if (localVideoRef.current) localVideoRef.current.srcObject = stream
+      setTimeout(() => {
+        if (localVideoRef.current) {
+          localVideoRef.current.srcObject = stream
+          localVideoRef.current.play().catch(() => {})
+        }
+      }, 100)
       return stream
     } catch (err) {
       console.error('Error accediendo a medios:', err)
@@ -73,8 +78,14 @@ export default function VideoCall({ call, user, onEnd }) {
     stream.getTracks().forEach(track => pc.addTrack(track, stream))
 
     pc.ontrack = (e) => {
-      if (remoteVideoRef.current && e.streams[0]) {
-        remoteVideoRef.current.srcObject = e.streams[0]
+      console.log('Track recibido:', e.track.kind)
+      if (e.streams && e.streams[0]) {
+        setTimeout(() => {
+          if (remoteVideoRef.current) {
+            remoteVideoRef.current.srcObject = e.streams[0]
+            remoteVideoRef.current.play().catch(() => {})
+          }
+        }, 100)
       }
     }
 
