@@ -1,3 +1,4 @@
+import VideoCall from '../components/VideoCall'
 import Sidebar from '../components/Sidebar'
 import ChatPanel from '../components/ChatPanel'
 import api from '../services/api'
@@ -7,6 +8,7 @@ import { useState, useEffect, useRef } from 'react'
 
 export default function Chat() {
   const { user } = useAuth()
+  const [activeCall, setActiveCall] = useState(null)
   const [activeChat, setActiveChat] = useState(null)
   const [conversations, setConversations] = useState([])
   const [loading, setLoading] = useState(true)
@@ -77,6 +79,20 @@ export default function Chat() {
 }, [])
 
   useEffect(() => {
+    const handleIncomingCall = ({ fromUserId, fromName, fromAvatar, callType }) => {
+      const contact = conversations.find(c => c.other_user_id === fromUserId)
+      setActiveCall({
+        contact: contact || { name: fromName, avatar_url: fromAvatar },
+        callType,
+        isIncoming: true,
+        remoteUserId: fromUserId
+      })
+    }
+    socket.on('call:incoming', handleIncomingCall)
+    return () => socket.off('call:incoming', handleIncomingCall)
+  }, [conversations])
+
+  useEffect(() => {
   const handleReconnect = async () => {
     if (!user?.id || !hasLoadedRef.current) return
     socket.emit('user:join', user?.id)
@@ -109,6 +125,14 @@ export default function Chat() {
 
   if (loading) return <div className="h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900 text-sm text-slate-500 dark:text-slate-400">Cargando...</div>
 
+  {activeCall && (
+    <VideoCall
+      call={activeCall}
+      user={user}
+      onEnd={() => setActiveCall(null)}
+    />
+  )}
+
   return (
     <div className="flex h-screen bg-slate-50 dark:bg-slate-900 transition-colors duration-300 overflow-hidden">
       
@@ -131,7 +155,12 @@ export default function Chat() {
       <div className={`flex-1 ${!activeChat ? 'hidden md:flex' : 'flex'} h-full min-w-0`}>
         {activeChat
           // Pasamos setActiveChat como propiedad (prop) para poder usar el botón de "Atrás" después
-          ? <ChatPanel activeChat={activeChat} contacts={conversations} setActiveChat={setActiveChat} />
+          ? <ChatPanel 
+              activeChat={activeChat} 
+              contacts={conversations} 
+              setActiveChat={setActiveChat}
+              onStartCall={(callData) => setActiveCall(callData)}
+            />
           : (
             <div className="flex-1 flex flex-col items-center justify-center gap-3 text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-slate-900">
               <span className="text-5xl">💬</span>
