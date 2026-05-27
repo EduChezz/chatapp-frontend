@@ -9,7 +9,7 @@ import { useAuth } from '../context/AuthContext'
 const EMOJIS = ['😀','😂','❤️','🔥','👍','😮','😢','🎉','🙏','💯']
 const REACTIONS = ['❤️','😂','👍','😮','😢','🔥']
 
-export default function ChatPanel({ activeChat, contacts, setActiveChat }) {
+export default function ChatPanel({ activeChat, contacts, setActiveChat, onStartCall }) {
   const { dark } = useTheme()
   const { user } = useAuth()
   const [messageQueue, setMessageQueue] = useState([])
@@ -614,13 +614,39 @@ export default function ChatPanel({ activeChat, contacts, setActiveChat }) {
               </button>
             )}
             {!contact?.is_group && contact?.other_user_id && (
-              <button
-                onClick={handleBlock}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold border-none cursor-pointer transition-colors ${isBlocked ? 'bg-red-100 text-red-600 hover:bg-red-200' : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-300'}`}
-                title={isBlocked ? 'Desbloquear usuario' : 'Bloquear usuario'}
-              >
-                {isBlocked ? '🔓 Desbloqueado' : '🚫 Bloquear'}
-              </button>
+              <>
+                <button
+                  onClick={() => onStartCall?.({
+                    contact,
+                    callType: 'audio',
+                    isIncoming: false,
+                    remoteUserId: contact.other_user_id
+                  })}
+                  className="px-3 py-1.5 rounded-lg text-xs font-bold border-none cursor-pointer transition-colors bg-green-100 text-green-600 hover:bg-green-200"
+                  title="Llamada de voz"
+                >
+                  📞
+                </button>
+                <button
+                  onClick={() => onStartCall?.({
+                    contact,
+                    callType: 'video',
+                    isIncoming: false,
+                    remoteUserId: contact.other_user_id
+                  })}
+                  className="px-3 py-1.5 rounded-lg text-xs font-bold border-none cursor-pointer transition-colors bg-blue-100 text-blue-600 hover:bg-blue-200"
+                  title="Videollamada"
+                >
+                  📹
+                </button>
+                <button
+                  onClick={handleBlock}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold border-none cursor-pointer transition-colors ${isBlocked ? 'bg-red-100 text-red-600 hover:bg-red-200' : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-300'}`}
+                  title={isBlocked ? 'Desbloquear usuario' : 'Bloquear usuario'}
+                >
+                  {isBlocked ? '🔓 Desbloqueado' : '🚫 Bloquear'}
+                </button>
+              </>
             )}
           </div>
         </div>
