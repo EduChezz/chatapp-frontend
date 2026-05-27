@@ -113,7 +113,6 @@ export default function VideoCall({ call, user, onEnd }) {
     socket.emit('call:accept', { toUserId: remoteUserId, callType })
   }
 
-  // Rechazar llamada
   const rejectCall = () => {
     ringtoneRef.current?.pause()
     ringtoneRef.current = null
@@ -121,33 +120,28 @@ export default function VideoCall({ call, user, onEnd }) {
     onEnd()
   }
 
-  // Colgar
   const endCall = () => {
     socket.emit('call:end', { toUserId: remoteUserId })
     cleanup()
     onEnd()
   }
 
-  // Limpiar recursos
   const cleanup = () => {
     localStreamRef.current?.getTracks().forEach(t => t.stop())
     pcRef.current?.close()
     pcRef.current = null
   }
 
-  // Silenciar
   const toggleMute = () => {
     localStreamRef.current?.getAudioTracks().forEach(t => { t.enabled = !t.enabled })
     setIsMuted(m => !m)
   }
 
-  // Apagar cámara
   const toggleCamera = () => {
     localStreamRef.current?.getVideoTracks().forEach(t => { t.enabled = !t.enabled })
     setIsCameraOff(c => !c)
   }
 
-  // Subir a videollamada
   const upgradeToVideo = async () => {
     socket.emit('call:upgrade', { toUserId: remoteUserId })
     setCallType('video')
@@ -159,7 +153,6 @@ export default function VideoCall({ call, user, onEnd }) {
     else pcRef.current.addTrack(videoTrack, newStream)
   }
 
-  // Aplicar filtro
   const applyFilter = (filterId) => {
     setActiveFilter(filterId)
     const filter = FILTERS.find(f => f.id === filterId)
@@ -235,7 +228,6 @@ export default function VideoCall({ call, user, onEnd }) {
     }
   }, [])
 
-  // Limpiar al desmontar
   useEffect(() => { return cleanup }, [])
 
   const avatarBg = contact?.color || '#3b82f6'
@@ -248,13 +240,11 @@ export default function VideoCall({ call, user, onEnd }) {
       display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center'
     }}>
 
-      {/* VIDEO REMOTO */}
       {callType === 'video' && status === 'active' && (
         <video ref={remoteVideoRef} autoPlay playsInline
           style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
       )}
 
-      {/* VIDEO LOCAL (esquina) */}
       {callType === 'video' && status === 'active' && (
         <video ref={localVideoRef} autoPlay playsInline muted
           style={{
