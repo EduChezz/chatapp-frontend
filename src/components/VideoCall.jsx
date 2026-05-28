@@ -185,11 +185,15 @@ export default function VideoCall({ call, user, onEnd }) {
 
     socket.on('webrtc:offer', async ({ offer }) => {
       if (!pcRef.current) return
-      await pcRef.current.setRemoteDescription(new RTCSessionDescription(offer))
-      await flushPendingCandidates()
-      const answer = await pcRef.current.createAnswer()
-      await pcRef.current.setLocalDescription(answer)
-      socket.emit('webrtc:answer', { toUserId: remoteUserId, answer })
+      try {
+        await pcRef.current.setRemoteDescription(new RTCSessionDescription(offer))
+        await flushPendingCandidates()
+        const answer = await pcRef.current.createAnswer()
+        await pcRef.current.setLocalDescription(answer)
+        socket.emit('webrtc:answer', { toUserId: remoteUserId, answer })
+      } catch (err) {
+        console.error('Error procesando offer:', err)
+      }
     })
 
     socket.on('webrtc:answer', async ({ answer }) => {
@@ -200,7 +204,17 @@ export default function VideoCall({ call, user, onEnd }) {
     socket.on('webrtc:ice', async ({ candidate }) => { await addIceCandidate(candidate) })
     socket.on('call:ended', () => { cleanup(); onEnd() })
     socket.on('call:rejected', () => { cleanup(); onEnd() })
-    socket.on('call:upgrade', () => setUpgradeRequested(true))
+    socket.on('call:upgrade', async () => {
+      setUpgradeRequested(true)
+      setCallType('video')
+      // Obtener stream de video local también
+      const stream = await getLocalStream(true)
+      if (!stream || !pcRef.current) return
+      const videoTrack = stream.getVideoTracks()[0]
+      const sender = pcRef.current.getSenders().find(s => s.track?.kind === 'video')
+      if (sender) sender.replaceTrack(videoTrack)
+      else pcRef.current.addTrack(videoTrack, stream)
+    })
 
     return () => {
       socket.off('call:accepted'); socket.off('webrtc:offer'); socket.off('webrtc:answer')
