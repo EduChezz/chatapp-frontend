@@ -208,7 +208,7 @@ export default function Sidebar({ activeChat, setActiveChat, contacts, setContac
                     {u.name.substring(0, 2).toUpperCase()}
                   </div>
                   <div className="flex-1 overflow-hidden">
-                    <h4 className="m-0 text-white text-sm font-semibold whitespace-nowrap overflow-hidden text-ellipsis">{u.name}</h4>
+                    <h4 className="m-0 text-white text-sm font-semibold whitespace-nowrap overflow-hidden text-ellipsis text-left">{u.name}</h4>
                     <p className="m-0 text-slate-400 text-xs">
                       {isCreatingGroup ? (isSelected ? 'Seleccionado ✓' : 'Toca para agregar') : 'Toca para chatear'}
                     </p>
@@ -242,7 +242,7 @@ export default function Sidebar({ activeChat, setActiveChat, contacts, setContac
                 
                 <div className="flex-1 overflow-hidden flex flex-col justify-center min-w-0">
                   <div className="flex justify-between items-center w-full">
-                    <h4 className="m-0 text-white text-sm font-semibold whitespace-nowrap overflow-hidden text-ellipsis flex-1">
+                    <h4 className="m-0 text-white text-sm font-semibold whitespace-nowrap overflow-hidden text-ellipsis flex-1text-left">
                       {chat.name}
                     </h4>
                     
