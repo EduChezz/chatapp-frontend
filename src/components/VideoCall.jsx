@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import socket from '../services/socket'
+import api from '../services/api'
 
 const FILTERS = [
   { id: 'none', label: 'Normal', css: 'none' },
@@ -9,14 +10,6 @@ const FILTERS = [
   { id: 'contrast', label: 'Contraste', css: 'contrast(1.8)' },
   { id: 'blur', label: 'Suave', css: 'blur(1.5px)' },
 ]
-
-const [iceServers, setIceServers] = useState([{ urls: 'stun:stun.l.google.com:19302' }])
-
-useEffect(() => {
-  api.get('/turn-credentials')
-    .then(res => setIceServers(res.data))
-    .catch(() => {})
-}, [])
 
 export default function VideoCall({ call, user, onEnd }) {
   const { contact, callType: initialCallType, isIncoming, remoteUserId } = call
@@ -28,6 +21,7 @@ export default function VideoCall({ call, user, onEnd }) {
   const localStreamRef = useRef()
   const pendingCandidatesRef = useRef([])
 
+  const [iceServers, setIceServers] = useState([{ urls: 'stun:stun.l.google.com:19302' }])
   const [callType, setCallType] = useState(initialCallType)
   const [status, setStatus] = useState(isIncoming ? 'incoming' : 'calling')
   const [isMuted, setIsMuted] = useState(false)
@@ -36,6 +30,13 @@ export default function VideoCall({ call, user, onEnd }) {
   const [activeFilter, setActiveFilter] = useState('none')
   const [callDuration, setCallDuration] = useState(0)
   const [upgradeRequested, setUpgradeRequested] = useState(false)
+
+  // Cargar credenciales TURN de Twilio
+  useEffect(() => {
+    api.get('/turn-credentials')
+      .then(res => { if (res.data) setIceServers(res.data) })
+      .catch(() => {})
+  }, [])
 
   useEffect(() => {
     if (status === 'incoming') {
@@ -77,7 +78,7 @@ export default function VideoCall({ call, user, onEnd }) {
 
   const createPC = (stream) => {
     if (pcRef.current) pcRef.current.close()
-    const pc = new RTCPeerConnection(ICE_SERVERS)
+    const pc = new RTCPeerConnection({ iceServers })
     pcRef.current = pc
     stream.getTracks().forEach(track => pc.addTrack(track, stream))
     pc.ontrack = (e) => {
@@ -94,7 +95,7 @@ export default function VideoCall({ call, user, onEnd }) {
   const startOutgoingCall = async (ct) => {
     const stream = await getLocalStream(ct === 'video')
     if (!stream) return
-    const pc = new RTCPeerConnection({ iceServers })
+    const pc = createPC(stream)
     const offer = await pc.createOffer()
     await pc.setLocalDescription(offer)
     socket.emit('webrtc:offer', { toUserId: remoteUserId, offer })
@@ -209,24 +210,12 @@ export default function VideoCall({ call, user, onEnd }) {
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 1000, background: isVideo && isActive ? '#000' : '#1e293b', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
 
-      {/* Video remoto */}
       <video ref={remoteVideoRef} autoPlay playsInline
-        style={{ 
-          position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover',
-          visibility: isVideo && isActive ? 'visible' : 'hidden',
-          opacity: isVideo && isActive ? 1 : 0
-        }} />
+        style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', visibility: isVideo && isActive ? 'visible' : 'hidden', opacity: isVideo && isActive ? 1 : 0 }} />
 
-      {/* Video local */}
       <video ref={localVideoRef} autoPlay playsInline muted
-        style={{ 
-          position: 'absolute', bottom: 100, right: 16,
-          width: 100, height: 140, objectFit: 'cover',
-          borderRadius: 12, border: '2px solid white',
-          visibility: isVideo && isActive ? 'visible' : 'hidden',
-          opacity: isVideo && isActive ? 1 : 0
-        }} />
-      {/* Pantalla de llamada entrante */}
+        style={{ position: 'absolute', bottom: 100, right: 16, width: 100, height: 140, objectFit: 'cover', borderRadius: 12, border: '2px solid white', visibility: isVideo && isActive ? 'visible' : 'hidden', opacity: isVideo && isActive ? 1 : 0 }} />
+
       {status === 'incoming' && (
         <div style={{ textAlign: 'center', color: 'white' }}>
           <p style={{ fontSize: 14, opacity: 0.7, marginBottom: 16 }}>{isVideo ? '📹 Videollamada entrante' : '📞 Llamada entrante'}</p>
@@ -242,7 +231,6 @@ export default function VideoCall({ call, user, onEnd }) {
         </div>
       )}
 
-      {/* Pantalla llamando */}
       {status === 'calling' && (
         <div style={{ textAlign: 'center', color: 'white' }}>
           <div style={{ width: 80, height: 80, borderRadius: '50%', background: avatarBg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, fontWeight: 600, color: 'white', margin: '0 auto 16px', overflow: 'hidden' }}>
@@ -254,7 +242,6 @@ export default function VideoCall({ call, user, onEnd }) {
         </div>
       )}
 
-      {/* Pantalla activa */}
       {isActive && (
         <>
           {!isVideo && (
