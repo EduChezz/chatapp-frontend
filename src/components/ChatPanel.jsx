@@ -584,7 +584,7 @@ export default function ChatPanel({ activeChat, contacts, setActiveChat, onStart
                 : contact?.name?.substring(0, 2).toUpperCase() || '?'
               }
             </div>
-            <div className="overflow-hidden">
+            <div className="overflow-hidden flex flex-col justify-center">
               <p className="m-0 font-medium text-sm text-slate-800 dark:text-slate-100 whitespace-nowrap overflow-hidden text-ellipsis">
                 {contact?.name || 'Chat'}{contact?.is_group && <span className="ml-1.5 text-xs text-purple-600 font-bold">👥 Grupo</span>}</p>
               <p className={`m-0 text-xs ${isTyping ? 'text-blue-500 font-medium' : 'text-slate-500'}`}>
