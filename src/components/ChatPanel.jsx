@@ -576,7 +576,7 @@ export default function ChatPanel({ activeChat, contacts, setActiveChat, onStart
       <div className="flex-1 flex flex-col h-screen bg-slate-50 dark:bg-slate-900 transition-colors duration-300 min-w-0">
         {/* Header */}
         <div className="px-4 py-3 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between transition-colors">
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-3">
             <button onClick={() => setActiveChat(null)} className="md:hidden p-1 mr-1 bg-transparent border-none text-slate-600 dark:text-slate-300 text-2xl cursor-pointer hover:scale-110 transition-transform leading-none">←</button>
             <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-[13px] font-medium shadow-sm shrink-0 overflow-hidden" style={{ backgroundColor: contact?.color || '#3b82f6' }}>
               {contact?.avatar_url
