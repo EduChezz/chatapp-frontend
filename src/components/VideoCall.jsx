@@ -137,12 +137,26 @@ export default function VideoCall({ call, user, onEnd }) {
   const upgradeToVideo = async () => {
     socket.emit('call:upgrade', { toUserId: remoteUserId })
     setCallType('video')
-    const newStream = await getLocalStream(true)
-    if (!newStream || !pcRef.current) return
-    const videoTrack = newStream.getVideoTracks()[0]
-    const sender = pcRef.current.getSenders().find(s => s.track?.kind === 'video')
-    if (sender) sender.replaceTrack(videoTrack)
-    else pcRef.current.addTrack(videoTrack, newStream)
+    
+    try {
+      const newStream = await getLocalStream(true)
+      if (!newStream || !pcRef.current) return
+      
+      const videoTrack = newStream.getVideoTracks()[0]
+      const sender = pcRef.current.getSenders().find(s => s.track?.kind === 'video')
+      
+      if (sender) {
+        await sender.replaceTrack(videoTrack)
+      } else {
+        pcRef.current.addTrack(videoTrack, newStream)
+      }
+
+      const offer = await pcRef.current.createOffer()
+      await pcRef.current.setLocalDescription(offer)
+      socket.emit('webrtc:offer', { toUserId: remoteUserId, offer })
+    } catch (err) {
+      console.error('Error al subir a video:', err)
+    }
   }
 
   const applyFilter = (filterId) => {
