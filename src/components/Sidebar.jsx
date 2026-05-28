@@ -123,7 +123,7 @@ export default function Sidebar({ activeChat, setActiveChat, contacts, setContac
           </div>
           <div className="overflow-hidden">
             <h3 className="text-white m-0 text-sm font-semibold whitespace-nowrap overflow-hidden text-ellipsis">{user?.name}</h3>
-            <p className="text-green-500 m-0 text-xs font-medium">● {user?.status || 'en línea'}</p>
+            <p className="text-green-500 m-0 text-xs font-medium">● en línea</p>
           </div>
         </div>
 

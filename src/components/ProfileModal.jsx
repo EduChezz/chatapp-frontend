@@ -4,7 +4,6 @@ import { useTheme } from '../context/ThemeContext'
 import api from '../services/api'
 
 const AVATAR_COLORS = ['#3b82f6','#7c3aed','#db2777','#ea580c','#16a34a','#0891b2']
-const STATUSES = ['en línea','ocupado','ausente','no molestar']
 
 export default function ProfileModal({ onClose }) {
   const { user, updateProfile } = useAuth()
@@ -12,7 +11,6 @@ export default function ProfileModal({ onClose }) {
   const [name, setName] = useState(user?.name || '')
   const [bio, setBio] = useState(user?.bio || '')
   const [color, setColor] = useState(user?.avatar_color || '#3b82f6')
-  const [status, setStatus] = useState(user?.status || 'en línea')
   const [avatarUrl, setAvatarUrl] = useState(user?.avatar_url || null)
   const [uploading, setUploading] = useState(false)
   const fileRef = useRef()
@@ -43,7 +41,7 @@ export default function ProfileModal({ onClose }) {
 
   const save = async () => {
     try {
-      await updateProfile({ name, bio, avatar_color: color, status, avatar_url: avatarUrl })
+      await updateProfile({ name, bio, avatar_color: color, avatar_url: avatarUrl })
       onClose()
     } catch (err) {
       console.error('Error actualizando perfil:', err)
@@ -120,20 +118,6 @@ export default function ProfileModal({ onClose }) {
             borderRadius: '8px', padding: '10px 12px', fontSize: '14px',
             color: text, outline: 'none', boxSizing: 'border-box'
           }} />
-
-        {/* Estado */}
-        <label style={{ fontSize: '12px', color: subtle }}>Estado</label>
-        <div style={{ display: 'flex', gap: '6px', margin: '8px 0 20px', flexWrap: 'wrap' }}>
-          {STATUSES.map(s => (
-            <button key={s} onClick={() => setStatus(s)} style={{
-              padding: '5px 12px', borderRadius: '20px', fontSize: '12px', cursor: 'pointer',
-              border: status === s ? 'none' : `1px solid ${border}`,
-              background: status === s ? '#3b82f6' : inputBg,
-              color: status === s ? 'white' : subtle,
-              fontWeight: status === s ? '500' : '400'
-            }}>{s}</button>
-          ))}
-        </div>
 
         <div style={{ display: 'flex', gap: '8px' }}>
           <button onClick={onClose} style={{

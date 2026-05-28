@@ -9,7 +9,7 @@ import { useAuth } from '../context/AuthContext'
 const EMOJIS = ['😀','😂','❤️','🔥','👍','😮','😢','🎉','🙏','💯']
 const REACTIONS = ['❤️','😂','👍','😮','😢','🔥']
 
-export default function ChatPanel({ activeChat, contacts, setActiveChat, onStartCall }) {
+export default function ChatPanel({ activeChat, contacts, setActiveChat, onStartCall, onlineUsers = [] }) {
   const { dark } = useTheme()
   const { user } = useAuth()
   const [messageQueue, setMessageQueue] = useState([])
@@ -590,21 +590,16 @@ export default function ChatPanel({ activeChat, contacts, setActiveChat, onStart
               <p className={`m-0 text-xs ${isTyping ? 'text-blue-500 font-medium' : 'text-slate-500'}`}>
                 {isTyping ? '✏️ escribiendo...' : (
                   <span className="flex items-center gap-1 flex-wrap">
-                    {contact?.status && (
-                      <span className={`font-medium ${
-                        contact.status === 'ocupado' ? 'text-yellow-500' :
-                        contact.status === 'ausente' ? 'text-orange-500' :
-                        contact.status === 'no molestar' ? 'text-red-500' :
-                        'text-green-500'
-                      }`}>
-                        ● {contact.status}
+                    {!contact?.is_group && (
+                      <span className={`font-medium ${contact?.other_user_id && onlineUsers?.includes(contact.other_user_id) ? 'text-green-500' : 'text-slate-400'}`}>
+                        ● {contact?.other_user_id && onlineUsers?.includes(contact.other_user_id) ? 'en línea' : 'desconectado'}
                       </span>
                     )}
-                    {contact?.bio && contact?.status && <span className="text-slate-400">·</span>}
+                    {contact?.bio && !contact?.is_group && <span className="text-slate-400">·</span>}
                     {contact?.bio && <span className="text-slate-400 italic truncate max-w-[150px]">{contact.bio}</span>}
                   </span>
                 )}
-</p>
+              </p>
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
@@ -644,7 +639,7 @@ export default function ChatPanel({ activeChat, contacts, setActiveChat, onStart
                   className={`px-3 py-1.5 rounded-lg text-xs font-bold border-none cursor-pointer transition-colors ${isBlocked ? 'bg-red-100 text-red-600 hover:bg-red-200' : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-300'}`}
                   title={isBlocked ? 'Desbloquear usuario' : 'Bloquear usuario'}
                 >
-                  {isBlocked ? '🔓 Desbloqueado' : '🚫 Bloquear'}
+                  {isBlocked ? '🔓' : '🚫'}
                 </button>
               </>
             )}

@@ -161,6 +161,7 @@ export default function Chat() {
                 contacts={conversations} 
                 setActiveChat={setActiveChat}
                 onStartCall={(callData) => setActiveCall(callData)}
+                onlineUsers={onlineUsers}
               />
             : (
               <div className="flex-1 flex flex-col items-center justify-center gap-3 text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-slate-900">
