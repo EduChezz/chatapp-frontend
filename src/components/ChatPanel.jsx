@@ -604,9 +604,33 @@ export default function ChatPanel({ activeChat, contacts, setActiveChat, onStart
           </div>
           <div className="flex items-center gap-2 shrink-0">
             {contact?.is_group && (
-              <button onClick={handleShowMembers} className="px-3 py-1.5 bg-purple-100 text-purple-600 hover:bg-purple-200 rounded-lg text-xs font-bold border-none cursor-pointer transition-colors">
-                👥 Integrantes
-              </button>
+              <>
+                <button onClick={handleShowMembers} className="px-3 py-1.5 bg-purple-100 text-purple-600 hover:bg-purple-200 rounded-lg text-xs font-bold border-none cursor-pointer transition-colors">
+                  👥 Integrantes
+                </button>
+                <button
+                  onClick={() => {
+                    const otherIds = groupMembers.filter(m => m.user_id !== user?.id).map(m => m.user_id)
+                    if (otherIds.length === 0) return alert('No hay otros miembros en el grupo.')
+                    onStartCall?.({ contact, callType: 'audio', isIncoming: false, isGroup: true, remoteUserIds: otherIds, conversationId: activeChat })
+                  }}
+                  className="px-3 py-1.5 rounded-lg text-xs font-bold border-none cursor-pointer transition-colors bg-green-100 text-green-600 hover:bg-green-200"
+                  title="Llamada grupal de voz"
+                >
+                  📞
+                </button>
+                <button
+                  onClick={() => {
+                    const otherIds = groupMembers.filter(m => m.user_id !== user?.id).map(m => m.user_id)
+                    if (otherIds.length === 0) return alert('No hay otros miembros en el grupo.')
+                    onStartCall?.({ contact, callType: 'video', isIncoming: false, isGroup: true, remoteUserIds: otherIds, conversationId: activeChat })
+                  }}
+                  className="px-3 py-1.5 rounded-lg text-xs font-bold border-none cursor-pointer transition-colors bg-blue-100 text-blue-600 hover:bg-blue-200"
+                  title="Videollamada grupal"
+                >
+                  📹
+                </button>
+              </>
             )}
             {!contact?.is_group && contact?.other_user_id && (
               <>

@@ -1,4 +1,4 @@
-import VideoCall from '../components/VideoCall'
+import VideoCall, { GroupVideoCall } from '../components/VideoCall'
 import Sidebar from '../components/Sidebar'
 import ChatPanel from '../components/ChatPanel'
 import api from '../services/api'
@@ -9,6 +9,7 @@ import { useState, useEffect, useRef } from 'react'
 export default function Chat() {
   const { user } = useAuth()
   const [activeCall, setActiveCall] = useState(null)
+  const [activeGroupCall, setActiveGroupCall] = useState(null)
   const [activeChat, setActiveChat] = useState(null)
   const [conversations, setConversations] = useState([])
   const [loading, setLoading] = useState(true)
@@ -89,7 +90,20 @@ export default function Chat() {
       })
     }
     socket.on('call:incoming', handleIncomingCall)
-    return () => socket.off('call:incoming', handleIncomingCall)
+
+    const handleGroupIncomingCall = ({ fromUserId, fromName, fromAvatar, callType, conversationId, allUserIds }) => {
+      const contact = conversations.find(c => c.id === conversationId)
+      const otherIds = allUserIds.filter(id => id !== user?.id)
+      setActiveGroupCall({
+        contact: contact || { name: fromName, avatar_url: fromAvatar },
+        callType,
+        isIncoming: true,
+        remoteUserIds: otherIds,
+        conversationId
+      })
+    }
+    socket.on('call:group_incoming', handleGroupIncomingCall)
+    return () => { socket.off('call:incoming', handleIncomingCall); socket.off('call:group_incoming', handleGroupIncomingCall) }
   }, [conversations])
 
   useEffect(() => {
@@ -134,6 +148,13 @@ export default function Chat() {
           onEnd={() => setActiveCall(null)}
         />
       )}
+      {activeGroupCall && (
+        <GroupVideoCall
+          call={activeGroupCall}
+          user={user}
+          onEnd={() => setActiveGroupCall(null)}
+        />
+      )}
 
       <div className="flex h-screen bg-slate-50 dark:bg-slate-900 transition-colors duration-300 overflow-hidden">
         
@@ -160,7 +181,7 @@ export default function Chat() {
                 activeChat={activeChat} 
                 contacts={conversations} 
                 setActiveChat={setActiveChat}
-                onStartCall={(callData) => setActiveCall(callData)}
+                onStartCall={(callData) => { if (callData.isGroup) setActiveGroupCall(callData); else setActiveCall(callData) }}
                 onlineUsers={onlineUsers}
               />
             : (
