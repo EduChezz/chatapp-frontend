@@ -610,7 +610,7 @@ export default function ChatPanel({ activeChat, contacts, setActiveChat, onStart
                 </button>
                 <button
                   onClick={() => {
-                    const otherIds = groupMembers.filter(m => m.user_id !== user?.id).map(m => m.user_id)
+                    const otherIds = groupMembers.filter(m => m.id !== user?.id).map(m => m.id)
                     if (otherIds.length === 0) return alert('No hay otros miembros en el grupo.')
                     onStartCall?.({ contact, callType: 'audio', isIncoming: false, isGroup: true, remoteUserIds: otherIds, conversationId: activeChat })
                   }}
@@ -621,7 +621,7 @@ export default function ChatPanel({ activeChat, contacts, setActiveChat, onStart
                 </button>
                 <button
                   onClick={() => {
-                    const otherIds = groupMembers.filter(m => m.user_id !== user?.id).map(m => m.user_id)
+                    const otherIds = groupMembers.filter(m => m.id !== user?.id).map(m => m.id)
                     if (otherIds.length === 0) return alert('No hay otros miembros en el grupo.')
                     onStartCall?.({ contact, callType: 'video', isIncoming: false, isGroup: true, remoteUserIds: otherIds, conversationId: activeChat })
                   }}
