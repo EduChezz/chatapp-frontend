@@ -119,16 +119,23 @@ export default function VideoCall({ call, user, onEnd }) {
     const client = clientRef.current
     if (!client) return
 
+    const playRemoteVideo = (agoraUser, attempt = 0) => {
+      const el = document.getElementById(`remote-video-${agoraUser.uid}`)
+      if (el) {
+        agoraUser.videoTrack?.play(el)
+      } else if (attempt < 10) {
+        setTimeout(() => playRemoteVideo(agoraUser, attempt + 1), 200)
+      }
+    }
+
     const onPublished = async (agoraUser, mediaType) => {
       await client.subscribe(agoraUser, mediaType)
       if (mediaType === 'video') {
         setRemoteUsers(prev =>
           prev.find(u => u.uid === agoraUser.uid) ? prev : [...prev, agoraUser]
         )
-        setTimeout(() => {
-          const el = document.getElementById(`remote-video-${agoraUser.uid}`)
-          if (el) agoraUser.videoTrack?.play(el)
-        }, 100)
+        // Retry hasta 10 veces cada 200ms esperando que React renderice el div
+        setTimeout(() => playRemoteVideo(agoraUser), 100)
       }
       if (mediaType === 'audio') agoraUser.audioTrack?.play()
     }
@@ -420,16 +427,18 @@ export function GroupVideoCall({ call, user, onEnd }) {
     const client = clientRef.current
     if (!client) return
 
+    const playGrpVideo = (agoraUser, attempt = 0) => {
+      const el = document.getElementById(`grp-remote-${agoraUser.uid}`)
+      if (el) { agoraUser.videoTrack?.play(el) }
+      else if (attempt < 10) { setTimeout(() => playGrpVideo(agoraUser, attempt + 1), 200) }
+    }
     const onPublished = async (agoraUser, mediaType) => {
       await client.subscribe(agoraUser, mediaType)
       if (mediaType === 'video') {
         setRemoteUsers(prev =>
           prev.find(u => u.uid === agoraUser.uid) ? prev : [...prev, agoraUser]
         )
-        setTimeout(() => {
-          const el = document.getElementById(`grp-remote-${agoraUser.uid}`)
-          if (el) agoraUser.videoTrack?.play(el)
-        }, 100)
+        setTimeout(() => playGrpVideo(agoraUser), 100)
       }
       if (mediaType === 'audio') agoraUser.audioTrack?.play()
     }
