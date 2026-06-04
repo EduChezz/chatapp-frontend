@@ -103,11 +103,18 @@ export default function VideoCall({ call, user, onEnd }) {
         const videoTrack = await AgoraRTC.createCameraVideoTrack()
         localTracksRef.current.video = videoTrack
         tracks.push(videoTrack)
-        videoTrack.play(localVideoRef.current)
       }
 
       await client.publish(tracks)
       setStatus('active')
+      // Reproducir video local DESPUÉS de que React renderice el div
+      if (withVideo) {
+        setTimeout(() => {
+          if (localVideoRef.current && localTracksRef.current.video) {
+            localTracksRef.current.video.play(localVideoRef.current)
+          }
+        }, 300)
+      }
     } catch (err) {
       console.error('Error uniéndose al canal:', err)
       alert('Error al iniciar la llamada. Verifica los permisos de micrófono/cámara.')
@@ -406,11 +413,17 @@ export function GroupVideoCall({ call, user, onEnd }) {
         const videoTrack = await AgoraRTC.createCameraVideoTrack()
         localTracksRef.current.video = videoTrack
         tracks.push(videoTrack)
-        videoTrack.play(localVideoRef.current)
       }
 
       await client.publish(tracks)
       setStatus('active')
+      if (withVideo) {
+        setTimeout(() => {
+          if (localVideoRef.current && localTracksRef.current.video) {
+            localTracksRef.current.video.play(localVideoRef.current)
+          }
+        }, 300)
+      }
 
       socket.emit('call:group_join', {
         toUserIds: remoteUserIds,
