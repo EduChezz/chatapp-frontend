@@ -75,6 +75,13 @@ export default function ChatPanel({ activeChat, contacts, setActiveChat, onStart
   }, [activeChat])
 
   useEffect(() => {
+    if (!activeChat || !contact?.is_group) return
+    api.get(`/conversations/${activeChat}/members`)
+      .then(res => setGroupMembers(res.data))
+      .catch(err => console.error("Error cargando miembros del grupo:", err))
+  }, [activeChat, contact?.is_group])
+
+  useEffect(() => {
     if (!memberSearch.trim()) {
       setMemberSearchResults([])
       return
