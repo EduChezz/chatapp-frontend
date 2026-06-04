@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import AgoraRTC from 'agora-rtc-sdk-ng'
 import socket from '../services/socket'
 
-const APP_ID = '122cced8c4204f7084f9d0078f92b1fb'
+const APP_ID = 'f2dd146790964084b021e633d8a17b67'
 
 const FILTERS = [
   { id: 'none',       label: 'Normal',    css: 'none' },
