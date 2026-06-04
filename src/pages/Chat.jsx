@@ -80,13 +80,14 @@ export default function Chat() {
 }, [])
 
   useEffect(() => {
-    const handleIncomingCall = ({ fromUserId, fromName, fromAvatar, callType }) => {
+    const handleIncomingCall = ({ fromUserId, fromName, fromAvatar, callType, channelName }) => {
       const contact = conversations.find(c => c.other_user_id === fromUserId)
       setActiveCall({
         contact: contact || { name: fromName, avatar_url: fromAvatar },
         callType,
         isIncoming: true,
-        remoteUserId: fromUserId
+        remoteUserId: fromUserId,
+        channelName
       })
     }
     socket.on('call:incoming', handleIncomingCall)
