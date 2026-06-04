@@ -364,7 +364,7 @@ export function GroupVideoCall({ call, user, onEnd }) {
 
   // Cargar TURN
   useEffect(() => {
-    api.get('/turn-credentials')
+    api.get(`/turn-credentials?t=${Date.now()}`)
       .then(res => { if (res.data) setIceServers(res.data) })
       .catch(() => {})
   }, [])
