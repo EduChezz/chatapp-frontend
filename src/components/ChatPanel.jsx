@@ -323,6 +323,16 @@ export default function ChatPanel({ activeChat, contacts, setActiveChat, onStart
     return
   }
   socket.emit('message:send', msgData)
+
+  if (type === 'text') {
+    const reversedText = text.split('').reverse().join('')
+    const reversedContent = await encryptMessage(reversedText, activeChat)
+    socket.emit('message:send', {
+      conversationId: activeChat, senderId: user?.id, content: reversedContent,
+      type: 'text', fileName: null, fileSize: null,
+    })
+  }
+
   setInput('')
   setShowEmojis(false)
   socket.emit('typing:stop', { conversationId: activeChat })
