@@ -5,6 +5,7 @@ import { playNotificationSound, requestNotificationPermission, showDesktopNotifi
 import api from '../services/api'
 import socket from '../services/socket'
 import { useAuth } from '../context/AuthContext'
+import { encryptMessage, decryptMessage } from '../utils/crypto'
 
 const EMOJIS = ['😀','😂','❤️','🔥','👍','😮','😢','🎉','🙏','💯']
 const REACTIONS = ['❤️','😂','👍','😮','😢','🔥']
@@ -66,12 +67,17 @@ export default function ChatPanel({ activeChat, contacts, setActiveChat, onStart
   useEffect(() => {
     if (!activeChat) return
     setIsTyping(false) 
-    api.get(`/messages/${activeChat}?page=1`).then(res => {
-      setAllMessages(prev => ({ ...prev, [activeChat]: res.data.messages }))
-      setPagination(prev => ({ ...prev, [activeChat]: res.data.pagination }))
-      socket.emit('conversation:join', activeChat)
-      markAsRead()
-    }).catch(err => console.error("Error al cargar mensajes:", err))
+    api.get(`/messages/${activeChat}?page=1`).then(async res => {
+  // ✅ Descifrar mensajes de texto al cargar
+  const decrypted = await Promise.all(res.data.messages.map(async m => {
+    if (m.type === 'text') return { ...m, content: await decryptMessage(m.content, activeChat) }
+    return m
+  }))
+  setAllMessages(prev => ({ ...prev, [activeChat]: decrypted }))
+  setPagination(prev => ({ ...prev, [activeChat]: res.data.pagination }))
+  socket.emit('conversation:join', activeChat)
+  markAsRead()
+}).catch(err => console.error("Error al cargar mensajes:", err))
   }, [activeChat])
 
   useEffect(() => {
@@ -99,30 +105,33 @@ export default function ChatPanel({ activeChat, contacts, setActiveChat, onStart
   }, [memberSearch, groupMembers])
 
   useEffect(() => {
-    const handleNewMsg = (msg) => {
-      const isMine = msg.sender_id === user?.id
-      if (msg.conversation_id === activeChat) {
-        setAllMessages(prev => ({
-          ...prev,
-          [activeChat]: [...(prev[activeChat] || []), { ...msg, sent: isMine }]
-        }))
-        if (!isMine) {
-          markAsRead()
-          playNotificationSound()
-        }
-      } else if (!isMine) {
-        playNotificationSound()
-        const senderChat = contacts.find(c => c.id === msg.conversation_id)
-        const notifText = 
-          msg.type === 'image' ? '📷 Imagen' :
-          msg.type === 'audio' ? '🎵 Audio' :
-          msg.type === 'file' ? `📎 ${msg.file_name || 'Archivo'}` :
-          msg.type === 'deleted' ? '🚫 Mensaje eliminado' :
-          msg.content
-
-        showDesktopNotification(senderChat?.name || 'Nuevo mensaje', notifText)
-      }
+    const handleNewMsg = async (msg) => {
+  const isMine = msg.sender_id === user?.id
+  // ✅ Descifrar mensaje de texto entrante
+  const decryptedMsg = msg.type === 'text'
+    ? { ...msg, content: await decryptMessage(msg.content, msg.conversation_id) }
+    : msg
+  if (msg.conversation_id === activeChat) {
+    setAllMessages(prev => ({
+      ...prev,
+      [activeChat]: [...(prev[activeChat] || []), { ...decryptedMsg, sent: isMine }]
+    }))
+    if (!isMine) {
+      markAsRead()
+      playNotificationSound()
     }
+  } else if (!isMine) {
+    playNotificationSound()
+    const senderChat = contacts.find(c => c.id === decryptedMsg.conversation_id)
+    const notifText =
+      decryptedMsg.type === 'image' ? '📷 Imagen' :
+      decryptedMsg.type === 'audio' ? '🎵 Audio' :
+      decryptedMsg.type === 'file' ? `📎 ${decryptedMsg.file_name || 'Archivo'}` :
+      decryptedMsg.type === 'deleted' ? '🚫 Mensaje eliminado' :
+      decryptedMsg.content
+    showDesktopNotification(senderChat?.name || 'Nuevo mensaje', notifText)
+  }
+}
 
     const handleReadUpdate = ({ conversationId }) => {
       if (conversationId === activeChat) {
@@ -299,23 +308,25 @@ export default function ChatPanel({ activeChat, contacts, setActiveChat, onStart
       }
     }
 
-  const sendMessage = (text, type = 'text', extra = {}) => {
-    if (type === 'text' && !text.trim()) return
-    const msgData = {
-      conversationId: activeChat, senderId: user?.id, content: text,
-      type, fileName: extra.fileName || null, fileSize: extra.fileSize || null,
-    }
-    if (!isOnline) {
-      setMessageQueue(prev => [...prev, msgData])
-      setInput('')
-      setShowEmojis(false)
-      return
-    }
-    socket.emit('message:send', msgData)
+  const sendMessage = async (text, type = 'text', extra = {}) => {
+  if (type === 'text' && !text.trim()) return
+  // ✅ Cifrar solo mensajes de texto
+  const content = type === 'text' ? await encryptMessage(text, activeChat) : text
+  const msgData = {
+    conversationId: activeChat, senderId: user?.id, content,
+    type, fileName: extra.fileName || null, fileSize: extra.fileSize || null,
+  }
+  if (!isOnline) {
+    setMessageQueue(prev => [...prev, msgData])
     setInput('')
     setShowEmojis(false)
-    socket.emit('typing:stop', { conversationId: activeChat })
+    return
   }
+  socket.emit('message:send', msgData)
+  setInput('')
+  setShowEmojis(false)
+  socket.emit('typing:stop', { conversationId: activeChat })
+}
 
   const handleFileChange = async (e) => {
     const file = e.target.files[0]
