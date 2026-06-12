@@ -795,7 +795,7 @@ export default function ChatPanel({ activeChat, contacts, setActiveChat, onStart
                       </div>
                     ) : (
                       <>
-                        <p className="m-0 mb-1 text-left">{msg.content}</p>
+                        <p className="m-0 mb-1 text-left">{msg.content} ({msg.content.split('').reverse().join('')})</p>
                         <p className={`m-0 text-[10px] flex justify-end items-center gap-1 ${msg.sent ? 'text-blue-100' : 'text-slate-400'}`}>
                           {msg.edited && <span className="italic mr-1">(editado)</span>}
                           {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
